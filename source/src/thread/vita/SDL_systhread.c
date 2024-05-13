@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,17 +18,15 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#if SDL_THREAD_VITA
+#ifdef SDL_THREAD_VITA
 
 /* VITA thread management routines for SDL */
 
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "SDL_error.h"
-#include "SDL_thread.h"
 #include "../SDL_systhread.h"
 #include "../SDL_thread_c.h"
 #include <psp2/types.h>
@@ -76,7 +74,7 @@ int SDL_SYS_CreateThread(SDL_Thread *thread)
         ThreadEntry, // function to run
         0,           // priority. 0 means priority of calling thread
         stack_size,  // stack size
-        0,           // attibutes. always 0
+        0,           // attributes. always 0
         0,           // cpu affinity mask. 0 = all CPUs
         NULL         // opt. always NULL
     );
@@ -94,9 +92,9 @@ void SDL_SYS_SetupThread(const char *name)
     /* Do nothing. */
 }
 
-SDL_threadID SDL_ThreadID(void)
+SDL_ThreadID SDL_GetCurrentThreadID(void)
 {
-    return (SDL_threadID)sceKernelGetThreadId();
+    return (SDL_ThreadID)sceKernelGetThreadId();
 }
 
 void SDL_SYS_WaitThread(SDL_Thread *thread)
@@ -133,5 +131,3 @@ int SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
 }
 
 #endif /* SDL_THREAD_VITA */
-
-/* vi: set ts=4 sw=4 expandtab: */

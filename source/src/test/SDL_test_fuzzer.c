@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -24,26 +24,10 @@
   Data generators for fuzzing test data in a reproducible way.
 
 */
+#include <SDL3/SDL_test.h>
 
-#include "SDL_config.h"
-
-#include <limits.h>
-/* Visual Studio 2008 doesn't have stdint.h */
-#if defined(_MSC_VER) && _MSC_VER <= 1500
-#define UINT8_MAX   _UI8_MAX
-#define UINT16_MAX  _UI16_MAX
-#define UINT32_MAX  _UI32_MAX
-#define INT64_MIN    _I64_MIN
-#define INT64_MAX    _I64_MAX
-#define UINT64_MAX  _UI64_MAX
-#else
-#include <stdint.h>
-#endif
-#include <stdio.h>
-#include <stdlib.h>
-#include <float.h>
-
-#include "SDL_test.h"
+#include <float.h>  /* Needed for FLT_MAX and DBL_EPSILON */
+#include <limits.h> /* Needed for UCHAR_MAX, etc. */
 
 /**
  * Counter for fuzzer invocations
@@ -68,54 +52,54 @@ void SDLTest_FuzzerInit(Uint64 execKey)
     fuzzerInvocationCounter = 0;
 }
 
-int SDLTest_GetFuzzerInvocationCount()
+int SDLTest_GetFuzzerInvocationCount(void)
 {
     return fuzzerInvocationCounter;
 }
 
-Uint8 SDLTest_RandomUint8()
+Uint8 SDLTest_RandomUint8(void)
 {
     fuzzerInvocationCounter++;
 
     return (Uint8)SDLTest_RandomInt(&rndContext) & 0x000000FF;
 }
 
-Sint8 SDLTest_RandomSint8()
+Sint8 SDLTest_RandomSint8(void)
 {
     fuzzerInvocationCounter++;
 
     return (Sint8)SDLTest_RandomInt(&rndContext) & 0x000000FF;
 }
 
-Uint16 SDLTest_RandomUint16()
+Uint16 SDLTest_RandomUint16(void)
 {
     fuzzerInvocationCounter++;
 
     return (Uint16)SDLTest_RandomInt(&rndContext) & 0x0000FFFF;
 }
 
-Sint16 SDLTest_RandomSint16()
+Sint16 SDLTest_RandomSint16(void)
 {
     fuzzerInvocationCounter++;
 
     return (Sint16)SDLTest_RandomInt(&rndContext) & 0x0000FFFF;
 }
 
-Sint32 SDLTest_RandomSint32()
+Sint32 SDLTest_RandomSint32(void)
 {
     fuzzerInvocationCounter++;
 
     return (Sint32)SDLTest_RandomInt(&rndContext);
 }
 
-Uint32 SDLTest_RandomUint32()
+Uint32 SDLTest_RandomUint32(void)
 {
     fuzzerInvocationCounter++;
 
     return (Uint32)SDLTest_RandomInt(&rndContext);
 }
 
-Uint64 SDLTest_RandomUint64()
+Uint64 SDLTest_RandomUint64(void)
 {
     union
     {
@@ -132,7 +116,7 @@ Uint64 SDLTest_RandomUint64()
     return value.v64;
 }
 
-Sint64 SDLTest_RandomSint64()
+Sint64 SDLTest_RandomSint64(void)
 {
     union
     {
@@ -165,12 +149,12 @@ Sint32 SDLTest_RandomIntegerInRange(Sint32 pMin, Sint32 pMax)
     }
 
     number = SDLTest_RandomUint32();
-    /* invocation count increment in preceeding call */
+    /* invocation count increment in preceding call */
 
     return (Sint32)((number % ((max + 1) - min)) + min);
 }
 
-/* !
+/**
  * Generates a unsigned boundary value between the given boundaries.
  * Boundary values are inclusive. See the examples below.
  * If boundary2 < boundary1, the values are swapped.
@@ -294,7 +278,7 @@ Uint64 SDLTest_RandomUint64BoundaryValue(Uint64 boundary1, Uint64 boundary2, SDL
                                                   validDomain);
 }
 
-/* !
+/**
  * Generates a signed boundary value between the given boundaries.
  * Boundary values are inclusive. See the examples below.
  * If boundary2 < boundary1, the values are swapped.
@@ -425,24 +409,24 @@ Sint64 SDLTest_RandomSint64BoundaryValue(Sint64 boundary1, Sint64 boundary2, SDL
                                                 validDomain);
 }
 
-float SDLTest_RandomUnitFloat()
+float SDLTest_RandomUnitFloat(void)
 {
     return SDLTest_RandomUint32() / (float)UINT_MAX;
 }
 
-float SDLTest_RandomFloat()
+float SDLTest_RandomFloat(void)
 {
     return (float)(SDLTest_RandomUnitDouble() * 2.0 * (double)FLT_MAX - (double)(FLT_MAX));
 }
 
 double
-SDLTest_RandomUnitDouble()
+SDLTest_RandomUnitDouble(void)
 {
     return (double)(SDLTest_RandomUint64() >> 11) * (1.0 / 9007199254740992.0);
 }
 
 double
-SDLTest_RandomDouble()
+SDLTest_RandomDouble(void)
 {
     double r = 0.0;
     double s = 1.0;
@@ -456,7 +440,7 @@ SDLTest_RandomDouble()
     return r;
 }
 
-char *SDLTest_RandomAsciiString()
+char *SDLTest_RandomAsciiString(void)
 {
     return SDLTest_RandomAsciiStringWithMaximumLength(255);
 }
@@ -488,7 +472,7 @@ char *SDLTest_RandomAsciiStringOfSize(int size)
     }
 
     string = (char *)SDL_malloc((size + 1) * sizeof(char));
-    if (string == NULL) {
+    if (!string) {
         return NULL;
     }
 
@@ -502,5 +486,3 @@ char *SDLTest_RandomAsciiStringOfSize(int size)
 
     return string;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

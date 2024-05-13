@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,14 +18,13 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../SDL_internal.h"
+#include "SDL_internal.h"
 
 /* These are functions that need to be implemented by a port of SDL */
 
 #ifndef SDL_systhread_h_
 #define SDL_systhread_h_
 
-#include "SDL_thread.h"
 #include "SDL_thread_c.h"
 
 /* Set up for C function definitions, even when using C++ */
@@ -76,5 +75,3 @@ SDL_CreateThreadInternal(int(SDLCALL *fn)(void *), const char *name,
 #endif
 
 #endif /* SDL_systhread_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

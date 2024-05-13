@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,9 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../SDL_internal.h"
-
-#include "SDL_hints.h"
+#include "SDL_internal.h"
 
 /* General quit handling code for SDL */
 
@@ -28,7 +26,6 @@
 #include <signal.h>
 #endif
 
-#include "SDL_events.h"
 #include "SDL_events_c.h"
 
 #if defined(HAVE_SIGNAL_H) || defined(HAVE_SIGACTION)
@@ -85,7 +82,7 @@ static void SDL_EventSignal_Init(const int sig)
         action.sa_handler = SDL_HandleSIG;
         sigaction(sig, &action, NULL);
     }
-#elif HAVE_SIGNAL_H
+#elif defined(HAVE_SIGNAL_H)
     void (*ohandler)(int) = signal(sig, SDL_HandleSIG);
     if (ohandler != SIG_DFL) {
         signal(sig, ohandler);
@@ -102,7 +99,7 @@ static void SDL_EventSignal_Quit(const int sig)
         action.sa_handler = SIG_DFL;
         sigaction(sig, &action, NULL);
     }
-#elif HAVE_SIGNAL_H
+#elif defined(HAVE_SIGNAL_H)
     void (*ohandler)(int) = signal(sig, SIG_DFL);
     if (ohandler != SDL_HandleSIG) {
         signal(sig, ohandler);
@@ -145,7 +142,7 @@ static void SDL_QuitQuit_Internal(void)
 }
 #endif
 
-int SDL_QuitInit(void)
+int SDL_InitQuit(void)
 {
 #ifdef HAVE_SIGNAL_SUPPORT
     if (!SDL_GetHintBoolean(SDL_HINT_NO_SIGNAL_HANDLERS, SDL_FALSE)) {
@@ -194,7 +191,5 @@ int SDL_SendQuit(void)
 #ifdef HAVE_SIGNAL_SUPPORT
     send_quit_pending = SDL_FALSE;
 #endif
-    return SDL_SendAppEvent(SDL_QUIT);
+    return SDL_SendAppEvent(SDL_EVENT_QUIT);
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

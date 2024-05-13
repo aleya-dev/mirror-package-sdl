@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,13 +18,13 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 /* uses BeOS euc.jp apm driver. */
 /* !!! FIXME: does this thing even work on Haiku? */
 
 #ifndef SDL_POWER_DISABLED
-#if SDL_POWER_HAIKU
+#ifdef SDL_POWER_HAIKU
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,10 +37,8 @@
 #define APM_DEVICE_PATH           "/dev/misc/apm"
 #define APM_FUNC_OFFSET           0x5300
 #define APM_FUNC_GET_POWER_STATUS 10
-#define APM_DEVICE_ALL 1
-#define APM_BIOS_CALL (B_DEVICE_OP_CODES_END + 3)
-
-#include "SDL_power.h"
+#define APM_DEVICE_ALL            1
+#define APM_BIOS_CALL             (B_DEVICE_OP_CODES_END + 3)
 
 SDL_bool SDL_GetPowerInfo_Haiku(SDL_PowerState *state, int *seconds, int *percent)
 {
@@ -123,5 +121,3 @@ SDL_bool SDL_GetPowerInfo_Haiku(SDL_PowerState *state, int *seconds, int *percen
 
 #endif /* SDL_POWER_HAIKU */
 #endif /* SDL_POWER_DISABLED */
-
-/* vi: set ts=4 sw=4 expandtab: */

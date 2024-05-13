@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -21,7 +21,7 @@
 #ifndef SDL_waylanddyn_h_
 #define SDL_waylanddyn_h_
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 /* We can't include wayland-client.h here
  * but we need some structs from it
@@ -59,6 +59,13 @@ enum libdecor_window_state;
     (WAYLAND_VERSION_MAJOR > x ||                                 \
      (WAYLAND_VERSION_MAJOR == x && WAYLAND_VERSION_MINOR > y) || \
      (WAYLAND_VERSION_MAJOR == x && WAYLAND_VERSION_MINOR == y && WAYLAND_VERSION_MICRO >= z))
+
+#ifdef HAVE_LIBDECOR_H
+#define SDL_LIBDECOR_CHECK_VERSION(x, y, z)                                 \
+    (SDL_LIBDECOR_VERSION_MAJOR > x ||                                      \
+     (SDL_LIBDECOR_VERSION_MAJOR == x && SDL_LIBDECOR_VERSION_MINOR > y) || \
+     (SDL_LIBDECOR_VERSION_MAJOR == x && SDL_LIBDECOR_VERSION_MINOR == y && SDL_LIBDECOR_VERSION_PATCH >= z))
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -158,8 +165,10 @@ void SDL_WAYLAND_UnloadSymbols(void);
 #define libdecor_frame_is_visible               (*WAYLAND_libdecor_frame_is_visible)
 #define libdecor_frame_is_floating              (*WAYLAND_libdecor_frame_is_floating)
 #define libdecor_frame_set_parent               (*WAYLAND_libdecor_frame_set_parent)
+#define libdecor_frame_show_window_menu         (*WAYLAND_libdecor_frame_show_window_menu)
 #define libdecor_frame_get_xdg_surface          (*WAYLAND_libdecor_frame_get_xdg_surface)
 #define libdecor_frame_get_xdg_toplevel         (*WAYLAND_libdecor_frame_get_xdg_toplevel)
+#define libdecor_frame_translate_coordinate     (*WAYLAND_libdecor_frame_translate_coordinate)
 #define libdecor_frame_map                      (*WAYLAND_libdecor_frame_map)
 #define libdecor_state_new                      (*WAYLAND_libdecor_state_new)
 #define libdecor_state_free                     (*WAYLAND_libdecor_state_free)
@@ -184,5 +193,3 @@ void SDL_WAYLAND_UnloadSymbols(void);
 #endif /* SDL_VIDEO_DRIVER_WAYLAND_DYNAMIC */
 
 #endif /* SDL_waylanddyn_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

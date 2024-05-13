@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
   Copyright (C) 2022 Collabora Ltd.
 
   This software is provided 'as-is', without any express or implied
@@ -19,7 +19,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #include "SDL_sandbox.h"
 
@@ -43,5 +43,3 @@ SDL_Sandbox SDL_DetectSandbox(void)
 
     return SDL_SANDBOX_NONE;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

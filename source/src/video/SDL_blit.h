@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,14 +18,10 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_blit_h_
 #define SDL_blit_h_
-
-#include "SDL_cpuinfo.h"
-#include "SDL_endian.h"
-#include "SDL_surface.h"
 
 /* pixman ARM blitters are 32 bit only : */
 #if defined(__aarch64__) || defined(_M_ARM64)
@@ -35,6 +31,7 @@
 
 /* Table to do pixel byte expansion */
 extern Uint8 *SDL_expand_byte[9];
+extern Uint16 SDL_expand_byte10[];
 
 /* SDL blit copy flags */
 #define SDL_COPY_MODULATE_COLOR 0x00000001
@@ -53,18 +50,19 @@ extern Uint8 *SDL_expand_byte[9];
 /* SDL blit CPU flags */
 #define SDL_CPU_ANY                0x00000000
 #define SDL_CPU_MMX                0x00000001
-#define SDL_CPU_3DNOW              0x00000002
-#define SDL_CPU_SSE                0x00000004
-#define SDL_CPU_SSE2               0x00000008
-#define SDL_CPU_ALTIVEC_PREFETCH   0x00000010
-#define SDL_CPU_ALTIVEC_NOPREFETCH 0x00000020
+#define SDL_CPU_SSE                0x00000002
+#define SDL_CPU_SSE2               0x00000004
+#define SDL_CPU_ALTIVEC_PREFETCH   0x00000008
+#define SDL_CPU_ALTIVEC_NOPREFETCH 0x00000010
 
 typedef struct
 {
+    SDL_Surface *src_surface;
     Uint8 *src;
     int src_w, src_h;
     int src_pitch;
     int src_skip;
+    SDL_Surface *dst_surface;
     Uint8 *dst;
     int dst_w, dst_h;
     int dst_pitch;
@@ -84,7 +82,7 @@ typedef struct
     Uint32 src_format;
     Uint32 dst_format;
     int flags;
-    int cpu;
+    unsigned int cpu;
     SDL_BlitFunc func;
 } SDL_BlitFuncEntry;
 
@@ -117,7 +115,7 @@ extern SDL_BlitFunc SDL_CalculateBlitA(SDL_Surface *surface);
  * Useful macros for blitting routines
  */
 
-#if defined(__GNUC__)
+#ifdef __GNUC__
 #define DECLARE_ALIGNED(t, v, a) t __attribute__((aligned(a))) v
 #elif defined(_MSC_VER)
 #define DECLARE_ALIGNED(t, v, a) __declspec(align(a)) t v
@@ -144,7 +142,7 @@ extern SDL_BlitFunc SDL_CalculateBlitA(SDL_Surface *surface);
         g = SDL_expand_byte[3][((Pixel & 0x03E0) >> 5)];  \
         b = SDL_expand_byte[3][(Pixel & 0x001F)];         \
     }
-#define RGB_FROM_RGB888(Pixel, r, g, b) \
+#define RGB_FROM_XRGB8888(Pixel, r, g, b) \
     {                                   \
         r = ((Pixel & 0xFF0000) >> 16); \
         g = ((Pixel & 0xFF00) >> 8);    \
@@ -231,13 +229,13 @@ extern SDL_BlitFunc SDL_CalculateBlitA(SDL_Surface *surface);
     }
 #define RGB565_FROM_RGB(Pixel, r, g, b)                        \
     {                                                          \
-        Pixel = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3); \
+        Pixel = (Uint16)(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3)); \
     }
 #define RGB555_FROM_RGB(Pixel, r, g, b)                        \
     {                                                          \
-        Pixel = ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3); \
+        Pixel = (Uint16)(((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3)); \
     }
-#define RGB888_FROM_RGB(Pixel, r, g, b)   \
+#define XRGB8888_FROM_RGB(Pixel, r, g, b)   \
     {                                     \
         Pixel = (r << 16) | (g << 8) | b; \
     }
@@ -264,6 +262,36 @@ extern SDL_BlitFunc SDL_CalculateBlitA(SDL_Surface *surface);
         b = b ? ((b << 2) | 0x3) : 0;                  \
         a = (a * 3) / 255;                             \
         Pixel = (a << 30) | (r << 20) | (g << 10) | b; \
+    }
+#define ARGB2101010_FROM_RGBAFLOAT(Pixel, r, g, b, a) \
+    {                                                 \
+        r = SDL_clamp(r, 0.0f, 1.0f) * 1023.0f;       \
+        g = SDL_clamp(g, 0.0f, 1.0f) * 1023.0f;       \
+        b = SDL_clamp(b, 0.0f, 1.0f) * 1023.0f;       \
+        a = SDL_clamp(a, 0.0f, 1.0f) * 3.0f;          \
+        Pixel = (((Uint32)SDL_roundf(a)) << 30) |     \
+                (((Uint32)SDL_roundf(r)) << 20) |     \
+                (((Uint32)SDL_roundf(g)) << 10) |     \
+                (Uint32)SDL_roundf(b);                \
+    }
+#define ABGR2101010_FROM_RGBA(Pixel, r, g, b, a)       \
+    {                                                  \
+        r = r ? ((r << 2) | 0x3) : 0;                  \
+        g = g ? ((g << 2) | 0x3) : 0;                  \
+        b = b ? ((b << 2) | 0x3) : 0;                  \
+        a = (a * 3) / 255;                             \
+        Pixel = (a << 30) | (b << 20) | (g << 10) | r; \
+    }
+#define ABGR2101010_FROM_RGBAFLOAT(Pixel, r, g, b, a) \
+    {                                                 \
+        r = SDL_clamp(r, 0.0f, 1.0f) * 1023.0f;       \
+        g = SDL_clamp(g, 0.0f, 1.0f) * 1023.0f;       \
+        b = SDL_clamp(b, 0.0f, 1.0f) * 1023.0f;       \
+        a = SDL_clamp(a, 0.0f, 1.0f) * 3.0f;          \
+        Pixel = (((Uint32)SDL_roundf(a)) << 30) |     \
+                (((Uint32)SDL_roundf(b)) << 20) |     \
+                (((Uint32)SDL_roundf(g)) << 10) |     \
+                (Uint32)SDL_roundf(r);                \
     }
 #define ASSEMBLE_RGB(buf, bpp, fmt, r, g, b)        \
     {                                               \
@@ -356,6 +384,27 @@ extern SDL_BlitFunc SDL_CalculateBlitA(SDL_Surface *surface);
         g = ((Pixel >> 12) & 0xFF);              \
         b = ((Pixel >> 2) & 0xFF);               \
         a = SDL_expand_byte[6][(Pixel >> 30)];   \
+    }
+#define RGBAFLOAT_FROM_ARGB2101010(Pixel, r, g, b, a)          \
+    {                                                          \
+        r = (float)((Pixel >> 20) & 0x3FF) / 1023.0f;          \
+        g = (float)((Pixel >> 10) & 0x3FF) / 1023.0f;          \
+        b = (float)((Pixel >> 0) & 0x3FF) / 1023.0f;           \
+        a = (float)SDL_expand_byte[6][(Pixel >> 30)] / 255.0f; \
+    }
+#define RGBA_FROM_ABGR2101010(Pixel, r, g, b, a) \
+    {                                            \
+        r = ((Pixel >> 2) & 0xFF);               \
+        g = ((Pixel >> 12) & 0xFF);              \
+        b = ((Pixel >> 22) & 0xFF);              \
+        a = SDL_expand_byte[6][(Pixel >> 30)];   \
+    }
+#define RGBAFLOAT_FROM_ABGR2101010(Pixel, r, g, b, a)          \
+    {                                                          \
+        r = (float)((Pixel >> 0) & 0x3FF) / 1023.0f;           \
+        g = (float)((Pixel >> 10) & 0x3FF) / 1023.0f;          \
+        b = (float)((Pixel >> 20) & 0x3FF) / 1023.0f;          \
+        a = (float)SDL_expand_byte[6][(Pixel >> 30)] / 255.0f; \
     }
 #define DISEMBLE_RGBA(buf, bpp, fmt, Pixel, r, g, b, a) \
     do {                                                \
@@ -579,11 +628,8 @@ extern SDL_BlitFunc SDL_CalculateBlitA(SDL_Surface *surface);
 
 #endif /* USE_DUFFS_LOOP */
 
-/* Prevent Visual C++ 6.0 from printing out stupid warnings */
 #if defined(_MSC_VER) && (_MSC_VER >= 600)
-#pragma warning(disable : 4550)
+#pragma warning(disable : 4244) /* '=': conversion from 'X' to 'Y', possible loss of data */
 #endif
 
 #endif /* SDL_blit_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

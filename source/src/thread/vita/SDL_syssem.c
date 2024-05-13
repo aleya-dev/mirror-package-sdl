@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,34 +18,31 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#if SDL_THREAD_VITA
+#ifdef SDL_THREAD_VITA
 
 /* Semaphore functions for the VITA. */
 
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "SDL_error.h"
-#include "SDL_thread.h"
-
 #include <psp2/types.h>
 #include <psp2/kernel/error.h>
 #include <psp2/kernel/threadmgr.h>
 
-struct SDL_semaphore
+struct SDL_Semaphore
 {
     SceUID semid;
 };
 
 /* Create a semaphore */
-SDL_sem *SDL_CreateSemaphore(Uint32 initial_value)
+SDL_Semaphore *SDL_CreateSemaphore(Uint32 initial_value)
 {
-    SDL_sem *sem;
+    SDL_Semaphore *sem;
 
-    sem = (SDL_sem *)SDL_malloc(sizeof(*sem));
-    if (sem != NULL) {
+    sem = (SDL_Semaphore *)SDL_malloc(sizeof(*sem));
+    if (sem) {
         /* TODO: Figure out the limit on the maximum value. */
         sem->semid = sceKernelCreateSema("SDL sema", 0, initial_value, 255, NULL);
         if (sem->semid < 0) {
@@ -53,17 +50,15 @@ SDL_sem *SDL_CreateSemaphore(Uint32 initial_value)
             SDL_free(sem);
             sem = NULL;
         }
-    } else {
-        SDL_OutOfMemory();
     }
 
     return sem;
 }
 
 /* Free the semaphore */
-void SDL_DestroySemaphore(SDL_sem *sem)
+void SDL_DestroySemaphore(SDL_Semaphore *sem)
 {
-    if (sem != NULL) {
+    if (sem) {
         if (sem->semid > 0) {
             sceKernelDeleteSema(sem->semid);
             sem->semid = 0;
@@ -74,19 +69,20 @@ void SDL_DestroySemaphore(SDL_sem *sem)
 }
 
 /* TODO: This routine is a bit overloaded.
- * If the timeout is 0 then just poll the semaphore; if it's SDL_MUTEX_MAXWAIT, pass
+ * If the timeout is 0 then just poll the semaphore; if it's -1, pass
  * NULL to sceKernelWaitSema() so that it waits indefinitely; and if the timeout
  * is specified, convert it to microseconds. */
-int SDL_SemWaitTimeout(SDL_sem *sem, Uint32 timeout)
+int SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore *sem, Sint64 timeoutNS)
 {
-    Uint32 *pTimeout;
+    SceUInt timeoutUS;
+    SceUInt *pTimeout;
     int res;
 
-    if (sem == NULL) {
+    if (!sem) {
         return SDL_InvalidParamError("sem");
     }
 
-    if (timeout == 0) {
+    if (timeoutNS == 0) {
         res = sceKernelPollSema(sem->semid, 1);
         if (res < 0) {
             return SDL_MUTEX_TIMEDOUT;
@@ -94,11 +90,11 @@ int SDL_SemWaitTimeout(SDL_sem *sem, Uint32 timeout)
         return 0;
     }
 
-    if (timeout == SDL_MUTEX_MAXWAIT) {
+    if (timeoutNS < 0) {
         pTimeout = NULL;
     } else {
-        timeout *= 1000; /* Convert to microseconds. */
-        pTimeout = &timeout;
+        timeoutUS = (SceUInt)SDL_NS_TO_US(timeoutNS); /* Convert to microseconds. */
+        pTimeout = &timeoutUS;
     }
 
     res = sceKernelWaitSema(sem->semid, 1, pTimeout);
@@ -108,27 +104,17 @@ int SDL_SemWaitTimeout(SDL_sem *sem, Uint32 timeout)
     case SCE_KERNEL_ERROR_WAIT_TIMEOUT:
         return SDL_MUTEX_TIMEDOUT;
     default:
-        return SDL_SetError("WaitForSingleObject() failed");
+        return SDL_SetError("sceKernelWaitSema() failed");
     }
 }
 
-int SDL_SemTryWait(SDL_sem *sem)
-{
-    return SDL_SemWaitTimeout(sem, 0);
-}
-
-int SDL_SemWait(SDL_sem *sem)
-{
-    return SDL_SemWaitTimeout(sem, SDL_MUTEX_MAXWAIT);
-}
-
 /* Returns the current count of the semaphore */
-Uint32 SDL_SemValue(SDL_sem *sem)
+Uint32 SDL_GetSemaphoreValue(SDL_Semaphore *sem)
 {
     SceKernelSemaInfo info;
     info.size = sizeof(info);
 
-    if (sem == NULL) {
+    if (!sem) {
         SDL_InvalidParamError("sem");
         return 0;
     }
@@ -140,11 +126,11 @@ Uint32 SDL_SemValue(SDL_sem *sem)
     return 0;
 }
 
-int SDL_SemPost(SDL_sem *sem)
+int SDL_PostSemaphore(SDL_Semaphore *sem)
 {
     int res;
 
-    if (sem == NULL) {
+    if (!sem) {
         return SDL_InvalidParamError("sem");
     }
 
@@ -157,5 +143,3 @@ int SDL_SemPost(SDL_sem *sem)
 }
 
 #endif /* SDL_THREAD_VITA */
-
-/* vi: set ts=4 sw=4 expandtab: */

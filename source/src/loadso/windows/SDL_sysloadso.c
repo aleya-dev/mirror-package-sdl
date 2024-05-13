@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,7 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifdef SDL_LOADSO_WINDOWS
 
@@ -27,19 +27,17 @@
 
 #include "../../core/windows/SDL_windows.h"
 
-#include "SDL_loadso.h"
-
 void *SDL_LoadObject(const char *sofile)
 {
     void *handle;
     LPTSTR tstr;
 
-    if (sofile == NULL) {
+    if (!sofile) {
         SDL_InvalidParamError("sofile");
         return NULL;
     }
     tstr = WIN_UTF8ToString(sofile);
-#ifdef __WINRT__
+#ifdef SDL_PLATFORM_WINRT
     /* WinRT only publicly supports LoadPackagedLibrary() for loading .dll
        files.  LoadLibrary() is a private API, and not available for apps
        (that can be published to MS' Windows Store.)
@@ -51,7 +49,7 @@ void *SDL_LoadObject(const char *sofile)
     SDL_free(tstr);
 
     /* Generate an error message if all loads failed */
-    if (handle == NULL) {
+    if (!handle) {
         char errbuf[512];
         SDL_strlcpy(errbuf, "Failed loading ", SDL_arraysize(errbuf));
         SDL_strlcat(errbuf, sofile, SDL_arraysize(errbuf));
@@ -60,10 +58,10 @@ void *SDL_LoadObject(const char *sofile)
     return handle;
 }
 
-void *SDL_LoadFunction(void *handle, const char *name)
+SDL_FunctionPointer SDL_LoadFunction(void *handle, const char *name)
 {
-    void *symbol = (void *)GetProcAddress((HMODULE)handle, name);
-    if (symbol == NULL) {
+    SDL_FunctionPointer symbol = (SDL_FunctionPointer)GetProcAddress((HMODULE)handle, name);
+    if (!symbol) {
         char errbuf[512];
         SDL_strlcpy(errbuf, "Failed loading ", SDL_arraysize(errbuf));
         SDL_strlcat(errbuf, name, SDL_arraysize(errbuf));
@@ -74,11 +72,9 @@ void *SDL_LoadFunction(void *handle, const char *name)
 
 void SDL_UnloadObject(void *handle)
 {
-    if (handle != NULL) {
+    if (handle) {
         FreeLibrary((HMODULE)handle);
     }
 }
 
 #endif /* SDL_LOADSO_WINDOWS */
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,24 +18,17 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
+#include "SDL_internal.h"
 
-#if defined(__clang_analyzer__) && !defined(SDL_DISABLE_ANALYZE_MACROS)
-#define SDL_DISABLE_ANALYZE_MACROS 1
-#endif
-
-#include "../SDL_internal.h"
-
-#if defined(__WIN32__) || defined(__WINGDK__)
+#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_WINGDK)
 #include "../core/windows/SDL_windows.h"
 #endif
 
-#if defined(__ANDROID__)
+#ifdef SDL_PLATFORM_ANDROID
 #include "../core/android/SDL_android.h"
 #endif
 
-#include "SDL_stdinc.h"
-
-#if (defined(__WIN32__) || defined(__WINGDK__)) && (!defined(HAVE_SETENV) || !defined(HAVE_GETENV))
+#if (defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_WINGDK)) && (!defined(HAVE_SETENV) || !defined(HAVE_GETENV))
 /* Note this isn't thread-safe! */
 static char *SDL_envmem = NULL; /* Ugh, memory leak */
 static size_t SDL_envmemlen = 0;
@@ -43,21 +36,21 @@ static size_t SDL_envmemlen = 0;
 
 /* Put a variable into the environment */
 /* Note: Name may not contain a '=' character. (Reference: http://www.unix.com/man-page/Linux/3/setenv/) */
-#if defined(HAVE_SETENV)
+#ifdef HAVE_SETENV
 int SDL_setenv(const char *name, const char *value, int overwrite)
 {
     /* Input validation */
-    if (name == NULL || *name == '\0' || SDL_strchr(name, '=') != NULL || value == NULL) {
+    if (!name || *name == '\0' || SDL_strchr(name, '=') != NULL || !value) {
         return -1;
     }
 
     return setenv(name, value, overwrite);
 }
-#elif defined(__WIN32__) || defined(__WINGDK__)
+#elif defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_WINGDK)
 int SDL_setenv(const char *name, const char *value, int overwrite)
 {
     /* Input validation */
-    if (name == NULL || *name == '\0' || SDL_strchr(name, '=') != NULL || value == NULL) {
+    if (!name || *name == '\0' || SDL_strchr(name, '=') != NULL || !value) {
         return -1;
     }
 
@@ -79,7 +72,7 @@ int SDL_setenv(const char *name, const char *value, int overwrite)
     char *new_variable;
 
     /* Input validation */
-    if (name == NULL || *name == '\0' || SDL_strchr(name, '=') != NULL || value == NULL) {
+    if (!name || *name == '\0' || SDL_strchr(name, '=') != NULL || !value) {
         return -1;
     }
 
@@ -94,7 +87,7 @@ int SDL_setenv(const char *name, const char *value, int overwrite)
     /* This leaks. Sorry. Get a better OS so we don't have to do this. */
     len = SDL_strlen(name) + SDL_strlen(value) + 2;
     new_variable = (char *)SDL_malloc(len);
-    if (new_variable == NULL) {
+    if (!new_variable) {
         return -1;
     }
 
@@ -111,7 +104,7 @@ int SDL_setenv(const char *name, const char *value, int overwrite)
     char *new_variable;
 
     /* Input validation */
-    if (name == NULL || *name == '\0' || SDL_strchr(name, '=') != NULL || value == NULL) {
+    if (!name || *name == '\0' || SDL_strchr(name, '=') != NULL || !value) {
         return -1;
     }
 
@@ -123,7 +116,7 @@ int SDL_setenv(const char *name, const char *value, int overwrite)
     /* Allocate memory for the variable */
     len = SDL_strlen(name) + SDL_strlen(value) + 2;
     new_variable = (char *)SDL_malloc(len);
-    if (new_variable == NULL) {
+    if (!new_variable) {
         return -1;
     }
 
@@ -167,28 +160,28 @@ int SDL_setenv(const char *name, const char *value, int overwrite)
 #endif
 
 /* Retrieve a variable named "name" from the environment */
-#if defined(HAVE_GETENV)
+#ifdef HAVE_GETENV
 char *SDL_getenv(const char *name)
 {
-#if defined(__ANDROID__)
+#ifdef SDL_PLATFORM_ANDROID
     /* Make sure variables from the application manifest are available */
     Android_JNI_GetManifestEnvironmentVariables();
 #endif
 
     /* Input validation */
-    if (name == NULL || *name == '\0') {
+    if (!name || *name == '\0') {
         return NULL;
     }
 
     return getenv(name);
 }
-#elif defined(__WIN32__) || defined(__WINGDK__)
+#elif defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_WINGDK)
 char *SDL_getenv(const char *name)
 {
     size_t bufferlen;
 
     /* Input validation */
-    if (name == NULL || *name == '\0') {
+    if (!name || *name == '\0') {
         return NULL;
     }
 
@@ -199,7 +192,7 @@ char *SDL_getenv(const char *name)
     }
     if (bufferlen > SDL_envmemlen) {
         char *newmem = (char *)SDL_realloc(SDL_envmem, bufferlen);
-        if (newmem == NULL) {
+        if (!newmem) {
             return NULL;
         }
         SDL_envmem = newmem;
@@ -215,14 +208,14 @@ char *SDL_getenv(const char *name)
     char *value;
 
     /* Input validation */
-    if (name == NULL || *name == '\0') {
+    if (!name || *name == '\0') {
         return NULL;
     }
 
     value = (char *)0;
     if (SDL_env) {
         len = SDL_strlen(name);
-        for (i = 0; SDL_env[i] && value == NULL; ++i) {
+        for (i = 0; SDL_env[i] && !value; ++i) {
             if ((SDL_strncmp(SDL_env[i], name, len) == 0) &&
                 (SDL_env[i][len] == '=')) {
                 value = &SDL_env[i][len + 1];
@@ -232,75 +225,3 @@ char *SDL_getenv(const char *name)
     return value;
 }
 #endif
-
-#ifdef TEST_MAIN
-#include <stdio.h>
-
-int main(int argc, char *argv[])
-{
-    char *value;
-
-    printf("Checking for non-existent variable... ");
-    fflush(stdout);
-    if (!SDL_getenv("EXISTS")) {
-        printf("okay\n");
-    } else {
-        printf("failed\n");
-    }
-    printf("Setting FIRST=VALUE1 in the environment... ");
-    fflush(stdout);
-    if (SDL_setenv("FIRST", "VALUE1", 0) == 0) {
-        printf("okay\n");
-    } else {
-        printf("failed\n");
-    }
-    printf("Getting FIRST from the environment... ");
-    fflush(stdout);
-    value = SDL_getenv("FIRST");
-    if (value && (SDL_strcmp(value, "VALUE1") == 0)) {
-        printf("okay\n");
-    } else {
-        printf("failed\n");
-    }
-    printf("Setting SECOND=VALUE2 in the environment... ");
-    fflush(stdout);
-    if (SDL_setenv("SECOND", "VALUE2", 0) == 0) {
-        printf("okay\n");
-    } else {
-        printf("failed\n");
-    }
-    printf("Getting SECOND from the environment... ");
-    fflush(stdout);
-    value = SDL_getenv("SECOND");
-    if (value && (SDL_strcmp(value, "VALUE2") == 0)) {
-        printf("okay\n");
-    } else {
-        printf("failed\n");
-    }
-    printf("Setting FIRST=NOVALUE in the environment... ");
-    fflush(stdout);
-    if (SDL_setenv("FIRST", "NOVALUE", 1) == 0) {
-        printf("okay\n");
-    } else {
-        printf("failed\n");
-    }
-    printf("Getting FIRST from the environment... ");
-    fflush(stdout);
-    value = SDL_getenv("FIRST");
-    if (value && (SDL_strcmp(value, "NOVALUE") == 0)) {
-        printf("okay\n");
-    } else {
-        printf("failed\n");
-    }
-    printf("Checking for non-existent variable... ");
-    fflush(stdout);
-    if (!SDL_getenv("EXISTS")) {
-        printf("okay\n");
-    } else {
-        printf("failed\n");
-    }
-    return 0;
-}
-#endif /* TEST_MAIN */
-
-/* vi: set ts=4 sw=4 expandtab: */

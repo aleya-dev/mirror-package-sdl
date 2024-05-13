@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,14 +18,12 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#if defined(SDL_LOADSO_DUMMY) || defined(SDL_LOADSO_DISABLED)
+#if defined(SDL_LOADSO_DUMMY)
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /* System dependent library loading routines                           */
-
-#include "SDL_loadso.h"
 
 void *SDL_LoadObject(const char *sofile)
 {
@@ -34,7 +32,7 @@ void *SDL_LoadObject(const char *sofile)
     return NULL;
 }
 
-void *SDL_LoadFunction(void *handle, const char *name)
+SDL_FunctionPointer SDL_LoadFunction(void *handle, const char *name)
 {
     const char *loaderror = "SDL_LoadFunction() not implemented";
     SDL_SetError("Failed loading %s: %s", name, loaderror);
@@ -46,6 +44,4 @@ void SDL_UnloadObject(void *handle)
     /* no-op. */
 }
 
-#endif /* SDL_LOADSO_DUMMY || SDL_LOADSO_DISABLED */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif /* SDL_LOADSO_DUMMY */

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,7 +19,7 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 #include "../../core/windows/SDL_windows.h"
 #include "../SDL_syslocale.h"
 
@@ -54,7 +54,7 @@ static void SDL_SYS_GetPreferredLocales_winxp(char *buf, size_t buflen)
 }
 
 /* this works on Windows Vista and later. */
-static void SDL_SYS_GetPreferredLocales_vista(char *buf, size_t buflen)
+static int SDL_SYS_GetPreferredLocales_vista(char *buf, size_t buflen)
 {
     ULONG numlangs = 0;
     WCHAR *wbuf = NULL;
@@ -65,9 +65,8 @@ static void SDL_SYS_GetPreferredLocales_vista(char *buf, size_t buflen)
     pGetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &numlangs, NULL, &wbuflen);
 
     wbuf = SDL_small_alloc(WCHAR, wbuflen, &isstack);
-    if (wbuf == NULL) {
-        SDL_OutOfMemory();
-        return;
+    if (!wbuf) {
+        return -1;
     }
 
     if (!pGetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &numlangs, wbuf, &wbuflen)) {
@@ -91,9 +90,10 @@ static void SDL_SYS_GetPreferredLocales_vista(char *buf, size_t buflen)
     }
 
     SDL_small_free(wbuf, isstack);
+    return 0;
 }
 
-void SDL_SYS_GetPreferredLocales(char *buf, size_t buflen)
+int SDL_SYS_GetPreferredLocales(char *buf, size_t buflen)
 {
     if (!kernel32) {
         kernel32 = GetModuleHandle(TEXT("kernel32.dll"));
@@ -102,11 +102,10 @@ void SDL_SYS_GetPreferredLocales(char *buf, size_t buflen)
         }
     }
 
-    if (pGetUserPreferredUILanguages == NULL) {
+    if (!pGetUserPreferredUILanguages) {
         SDL_SYS_GetPreferredLocales_winxp(buf, buflen); /* this is always available */
     } else {
         SDL_SYS_GetPreferredLocales_vista(buf, buflen); /* available on Vista and later. */
     }
+    return 0;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

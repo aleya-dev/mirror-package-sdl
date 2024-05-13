@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,9 +19,9 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_NGAGE
+#ifdef SDL_VIDEO_DRIVER_NGAGE
 
 /* Being a ngage driver, there's no event stream. We just define stubs for
    most of the API. */
@@ -40,19 +40,19 @@ extern "C" {
 #include "SDL_ngagevideo.h"
 #include "SDL_ngageevents_c.h"
 
-int HandleWsEvent(_THIS, const TWsEvent &aWsEvent);
+int HandleWsEvent(SDL_VideoDevice *_this, const TWsEvent &aWsEvent);
 
-void NGAGE_PumpEvents(_THIS)
+void NGAGE_PumpEvents(SDL_VideoDevice *_this)
 {
-    SDL_VideoData *phdata = (SDL_VideoData *)_this->driverdata;
+    SDL_VideoData *data = _this->driverdata;
 
-    while (phdata->NGAGE_WsEventStatus != KRequestPending) {
-        phdata->NGAGE_WsSession.GetEvent(phdata->NGAGE_WsEvent);
+    while (data->NGAGE_WsEventStatus != KRequestPending) {
+        data->NGAGE_WsSession.GetEvent(data->NGAGE_WsEvent);
 
-        HandleWsEvent(_this, phdata->NGAGE_WsEvent);
+        HandleWsEvent(_this, data->NGAGE_WsEvent);
 
-        phdata->NGAGE_WsEventStatus = KRequestPending;
-        phdata->NGAGE_WsSession.EventReady(&phdata->NGAGE_WsEventStatus);
+        data->NGAGE_WsEventStatus = KRequestPending;
+        data->NGAGE_WsSession.EventReady(&data->NGAGE_WsEventStatus);
     }
 }
 
@@ -63,12 +63,12 @@ void NGAGE_PumpEvents(_THIS)
 #include <bautils.h>
 #include <hal.h>
 
-extern void DisableKeyBlocking(_THIS);
-extern void RedrawWindowL(_THIS);
+extern void DisableKeyBlocking(SDL_VideoDevice *_this);
+extern void RedrawWindowL(SDL_VideoDevice *_this);
 
 TBool isCursorVisible = EFalse;
 
-static SDL_Scancode ConvertScancode(_THIS, int key)
+static SDL_Scancode ConvertScancode(SDL_VideoDevice *_this, int key)
 {
     SDL_Keycode keycode;
 
@@ -147,27 +147,27 @@ static SDL_Scancode ConvertScancode(_THIS, int key)
     return SDL_GetScancodeFromKey(keycode);
 }
 
-int HandleWsEvent(_THIS, const TWsEvent &aWsEvent)
+int HandleWsEvent(SDL_VideoDevice *_this, const TWsEvent &aWsEvent)
 {
-    SDL_VideoData *phdata = (SDL_VideoData *)_this->driverdata;
+    SDL_VideoData *data = _this->driverdata;
     int posted = 0;
 
     switch (aWsEvent.Type()) {
     case EEventKeyDown: /* Key events */
-        SDL_SendKeyboardKey(SDL_PRESSED, ConvertScancode(_this, aWsEvent.Key()->iScanCode));
+        SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, SDL_PRESSED, ConvertScancode(_this, aWsEvent.Key()->iScanCode));
         break;
     case EEventKeyUp: /* Key events */
-        SDL_SendKeyboardKey(SDL_RELEASED, ConvertScancode(_this, aWsEvent.Key()->iScanCode));
+        SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, SDL_RELEASED, ConvertScancode(_this, aWsEvent.Key()->iScanCode));
         break;
     case EEventFocusGained: /* SDL window got focus */
-        phdata->NGAGE_IsWindowFocused = ETrue;
+        data->NGAGE_IsWindowFocused = ETrue;
         /* Draw window background and screen buffer */
         DisableKeyBlocking(_this);
         RedrawWindowL(_this);
         break;
     case EEventFocusLost: /* SDL window lost focus */
     {
-        phdata->NGAGE_IsWindowFocused = EFalse;
+        data->NGAGE_IsWindowFocused = EFalse;
         RWsSession s;
         s.Connect();
         RWindowGroup g(s);
@@ -175,7 +175,7 @@ int HandleWsEvent(_THIS, const TWsEvent &aWsEvent)
         g.EnableReceiptOfFocus(EFalse);
         RWindow w(s);
         w.Construct(g, TUint32(&w));
-        w.SetExtent(TPoint(0, 0), phdata->NGAGE_WsWindow.Size());
+        w.SetExtent(TPoint(0, 0), data->NGAGE_WsWindow.Size());
         w.SetOrdinalPosition(0);
         w.Activate();
         w.Close();
@@ -192,5 +192,3 @@ int HandleWsEvent(_THIS, const TWsEvent &aWsEvent)
 }
 
 #endif /* SDL_VIDEO_DRIVER_NGAGE */
-
-/* vi: set ts=4 sw=4 expandtab: */

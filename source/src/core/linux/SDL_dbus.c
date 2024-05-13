@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,16 +18,13 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
-#include "SDL_hints.h"
+#include "SDL_internal.h"
 #include "SDL_dbus.h"
-#include "SDL_atomic.h"
 #include "SDL_sandbox.h"
 #include "../../stdlib/SDL_vacopy.h"
 
-#if SDL_USE_LIBDBUS
+#ifdef SDL_USE_LIBDBUS
 /* we never link directly to libdbus. */
-#include "SDL_loadso.h"
 static const char *dbus_library = "libdbus-1.so.3";
 static void *dbus_handle = NULL;
 static char *inhibit_handle = NULL;
@@ -36,60 +33,62 @@ static SDL_DBusContext dbus;
 
 static int LoadDBUSSyms(void)
 {
-#define SDL_DBUS_SYM2_OPTIONAL(x, y)                   \
-    dbus.x = SDL_LoadFunction(dbus_handle, #y)
+#define SDL_DBUS_SYM2_OPTIONAL(TYPE, x, y)                   \
+    dbus.x = (TYPE)SDL_LoadFunction(dbus_handle, #y)
 
-#define SDL_DBUS_SYM2(x, y)                            \
-    if (!(dbus.x = SDL_LoadFunction(dbus_handle, #y))) \
+#define SDL_DBUS_SYM2(TYPE, x, y)                            \
+    if (!(dbus.x = (TYPE)SDL_LoadFunction(dbus_handle, #y))) \
     return -1
 
-#define SDL_DBUS_SYM(x) \
-    SDL_DBUS_SYM2(x, dbus_##x)
+#define SDL_DBUS_SYM_OPTIONAL(TYPE, x) \
+    SDL_DBUS_SYM2_OPTIONAL(TYPE, x, dbus_##x)
 
-#define SDL_DBUS_SYM_OPTIONAL(x) \
-    SDL_DBUS_SYM2_OPTIONAL(x, dbus_##x)
+#define SDL_DBUS_SYM(TYPE, x) \
+    SDL_DBUS_SYM2(TYPE, x, dbus_##x)
 
-    SDL_DBUS_SYM(bus_get_private);
-    SDL_DBUS_SYM(bus_register);
-    SDL_DBUS_SYM(bus_add_match);
-    SDL_DBUS_SYM(connection_open_private);
-    SDL_DBUS_SYM(connection_set_exit_on_disconnect);
-    SDL_DBUS_SYM(connection_get_is_connected);
-    SDL_DBUS_SYM(connection_add_filter);
-    SDL_DBUS_SYM(connection_try_register_object_path);
-    SDL_DBUS_SYM(connection_send);
-    SDL_DBUS_SYM(connection_send_with_reply_and_block);
-    SDL_DBUS_SYM(connection_close);
-    SDL_DBUS_SYM(connection_ref);
-    SDL_DBUS_SYM(connection_unref);
-    SDL_DBUS_SYM(connection_flush);
-    SDL_DBUS_SYM(connection_read_write);
-    SDL_DBUS_SYM(connection_dispatch);
-    SDL_DBUS_SYM(message_is_signal);
-    SDL_DBUS_SYM(message_new_method_call);
-    SDL_DBUS_SYM(message_append_args);
-    SDL_DBUS_SYM(message_append_args_valist);
-    SDL_DBUS_SYM(message_iter_init_append);
-    SDL_DBUS_SYM(message_iter_open_container);
-    SDL_DBUS_SYM(message_iter_append_basic);
-    SDL_DBUS_SYM(message_iter_close_container);
-    SDL_DBUS_SYM(message_get_args);
-    SDL_DBUS_SYM(message_get_args_valist);
-    SDL_DBUS_SYM(message_iter_init);
-    SDL_DBUS_SYM(message_iter_next);
-    SDL_DBUS_SYM(message_iter_get_basic);
-    SDL_DBUS_SYM(message_iter_get_arg_type);
-    SDL_DBUS_SYM(message_iter_recurse);
-    SDL_DBUS_SYM(message_unref);
-    SDL_DBUS_SYM(threads_init_default);
-    SDL_DBUS_SYM(error_init);
-    SDL_DBUS_SYM(error_is_set);
-    SDL_DBUS_SYM(error_free);
-    SDL_DBUS_SYM(get_local_machine_id);
-    SDL_DBUS_SYM_OPTIONAL(try_get_local_machine_id);
-    SDL_DBUS_SYM(free);
-    SDL_DBUS_SYM(free_string_array);
-    SDL_DBUS_SYM(shutdown);
+    SDL_DBUS_SYM(DBusConnection *(*)(DBusBusType, DBusError *), bus_get_private);
+    SDL_DBUS_SYM(dbus_bool_t (*)(DBusConnection *, DBusError *), bus_register);
+    SDL_DBUS_SYM(void (*)(DBusConnection *, const char *, DBusError *), bus_add_match);
+    SDL_DBUS_SYM(DBusConnection *(*)(const char *, DBusError *), connection_open_private);
+    SDL_DBUS_SYM(void (*)(DBusConnection *, dbus_bool_t), connection_set_exit_on_disconnect);
+    SDL_DBUS_SYM(dbus_bool_t (*)(DBusConnection *), connection_get_is_connected);
+    SDL_DBUS_SYM(dbus_bool_t (*)(DBusConnection *, DBusHandleMessageFunction, void *, DBusFreeFunction), connection_add_filter);
+    SDL_DBUS_SYM(dbus_bool_t (*)(DBusConnection *, DBusHandleMessageFunction, void *), connection_remove_filter);
+    SDL_DBUS_SYM(dbus_bool_t (*)(DBusConnection *, const char *, const DBusObjectPathVTable *, void *, DBusError *), connection_try_register_object_path);
+    SDL_DBUS_SYM(dbus_bool_t (*)(DBusConnection *, DBusMessage *, dbus_uint32_t *), connection_send);
+    SDL_DBUS_SYM(DBusMessage *(*)(DBusConnection *, DBusMessage *, int, DBusError *), connection_send_with_reply_and_block);
+    SDL_DBUS_SYM(void (*)(DBusConnection *), connection_close);
+    SDL_DBUS_SYM(void (*)(DBusConnection *), connection_ref);
+    SDL_DBUS_SYM(void (*)(DBusConnection *), connection_unref);
+    SDL_DBUS_SYM(void (*)(DBusConnection *), connection_flush);
+    SDL_DBUS_SYM(dbus_bool_t (*)(DBusConnection *, int), connection_read_write);
+    SDL_DBUS_SYM(DBusDispatchStatus (*)(DBusConnection *), connection_dispatch);
+    SDL_DBUS_SYM(dbus_bool_t (*)(DBusMessage *, const char *, const char *), message_is_signal);
+    SDL_DBUS_SYM(dbus_bool_t (*)(DBusMessage *, const char *), message_has_path);
+    SDL_DBUS_SYM(DBusMessage *(*)(const char *, const char *, const char *, const char *), message_new_method_call);
+    SDL_DBUS_SYM(dbus_bool_t (*)(DBusMessage *, int, ...), message_append_args);
+    SDL_DBUS_SYM(dbus_bool_t (*)(DBusMessage *, int, va_list), message_append_args_valist);
+    SDL_DBUS_SYM(void (*)(DBusMessage *, DBusMessageIter *), message_iter_init_append);
+    SDL_DBUS_SYM(dbus_bool_t (*)(DBusMessageIter *, int, const char *, DBusMessageIter *), message_iter_open_container);
+    SDL_DBUS_SYM(dbus_bool_t (*)(DBusMessageIter *, int, const void *), message_iter_append_basic);
+    SDL_DBUS_SYM(dbus_bool_t (*)(DBusMessageIter *, DBusMessageIter *), message_iter_close_container);
+    SDL_DBUS_SYM(dbus_bool_t (*)(DBusMessage *, DBusError *, int, ...), message_get_args);
+    SDL_DBUS_SYM(dbus_bool_t (*)(DBusMessage *, DBusError *, int, va_list), message_get_args_valist);
+    SDL_DBUS_SYM(dbus_bool_t (*)(DBusMessage *, DBusMessageIter *), message_iter_init);
+    SDL_DBUS_SYM(dbus_bool_t (*)(DBusMessageIter *), message_iter_next);
+    SDL_DBUS_SYM(void (*)(DBusMessageIter *, void *), message_iter_get_basic);
+    SDL_DBUS_SYM(int (*)(DBusMessageIter *), message_iter_get_arg_type);
+    SDL_DBUS_SYM(void (*)(DBusMessageIter *, DBusMessageIter *), message_iter_recurse);
+    SDL_DBUS_SYM(void (*)(DBusMessage *), message_unref);
+    SDL_DBUS_SYM(dbus_bool_t (*)(void), threads_init_default);
+    SDL_DBUS_SYM(void (*)(DBusError *), error_init);
+    SDL_DBUS_SYM(dbus_bool_t (*)(const DBusError *), error_is_set);
+    SDL_DBUS_SYM(void (*)(DBusError *), error_free);
+    SDL_DBUS_SYM(char *(*)(void), get_local_machine_id);
+    SDL_DBUS_SYM_OPTIONAL(char *(*)(DBusError *), try_get_local_machine_id);
+    SDL_DBUS_SYM(void (*)(void *), free);
+    SDL_DBUS_SYM(void (*)(char **), free_string_array);
+    SDL_DBUS_SYM(void (*)(void), shutdown);
 
 #undef SDL_DBUS_SYM
 #undef SDL_DBUS_SYM2
@@ -99,7 +98,7 @@ static int LoadDBUSSyms(void)
 
 static void UnloadDBUSLibrary(void)
 {
-    if (dbus_handle != NULL) {
+    if (dbus_handle) {
         SDL_UnloadObject(dbus_handle);
         dbus_handle = NULL;
     }
@@ -108,9 +107,9 @@ static void UnloadDBUSLibrary(void)
 static int LoadDBUSLibrary(void)
 {
     int retval = 0;
-    if (dbus_handle == NULL) {
+    if (!dbus_handle) {
         dbus_handle = SDL_LoadObject(dbus_library);
-        if (dbus_handle == NULL) {
+        if (!dbus_handle) {
             retval = -1;
             /* Don't call SDL_SetError(): SDL_LoadObject already did. */
         } else {
@@ -171,9 +170,9 @@ static void SDL_DBus_Init_Spinlocked(void)
 
 void SDL_DBus_Init(void)
 {
-    SDL_AtomicLock(&spinlock_dbus_init); /* make sure two threads can't init at same time, since this can happen before SDL_Init. */
+    SDL_LockSpinlock(&spinlock_dbus_init); /* make sure two threads can't init at same time, since this can happen before SDL_Init. */
     SDL_DBus_Init_Spinlocked();
-    SDL_AtomicUnlock(&spinlock_dbus_init);
+    SDL_UnlockSpinlock(&spinlock_dbus_init);
 }
 
 void SDL_DBus_Quit(void)
@@ -186,14 +185,13 @@ void SDL_DBus_Quit(void)
         dbus.connection_close(dbus.session_conn);
         dbus.connection_unref(dbus.session_conn);
     }
-/* Don't do this - bug 3950
-   dbus_shutdown() is a debug feature which closes all global resources in the dbus library. Calling this should be done by the app, not a library, because if there are multiple users of dbus in the process then SDL could shut it down even though another part is using it.
-*/
-#if 0
-    if (dbus.shutdown) {
-        dbus.shutdown();
+
+    if (SDL_GetHintBoolean(SDL_HINT_SHUTDOWN_DBUS_ON_QUIT, SDL_FALSE)) {
+        if (dbus.shutdown) {
+            dbus.shutdown();
+        }
     }
-#endif
+
     SDL_zero(dbus);
     UnloadDBUSLibrary();
     SDL_free(inhibit_handle);
@@ -202,7 +200,7 @@ void SDL_DBus_Quit(void)
 
 SDL_DBusContext *SDL_DBus_GetContext(void)
 {
-    if (dbus_handle == NULL || !dbus.session_conn) {
+    if (!dbus_handle || !dbus.session_conn) {
         SDL_DBus_Init();
     }
 
@@ -363,38 +361,48 @@ SDL_bool SDL_DBus_QueryProperty(const char *node, const char *path, const char *
 
 void SDL_DBus_ScreensaverTickle(void)
 {
-    if (screensaver_cookie == 0 && inhibit_handle == NULL) { /* no need to tickle if we're inhibiting. */
+    if (screensaver_cookie == 0 && !inhibit_handle) { /* no need to tickle if we're inhibiting. */
         /* org.gnome.ScreenSaver is the legacy interface, but it'll either do nothing or just be a second harmless tickle on newer systems, so we leave it for now. */
         SDL_DBus_CallVoidMethod("org.gnome.ScreenSaver", "/org/gnome/ScreenSaver", "org.gnome.ScreenSaver", "SimulateUserActivity", DBUS_TYPE_INVALID);
         SDL_DBus_CallVoidMethod("org.freedesktop.ScreenSaver", "/org/freedesktop/ScreenSaver", "org.freedesktop.ScreenSaver", "SimulateUserActivity", DBUS_TYPE_INVALID);
     }
 }
 
-static SDL_bool SDL_DBus_AppendDictWithKeyValue(DBusMessageIter *iterInit, const char *key, const char *value)
+static SDL_bool SDL_DBus_AppendDictWithKeysAndValues(DBusMessageIter *iterInit, const char **keys, const char **values, int count)
 {
-    DBusMessageIter iterDict, iterEntry, iterValue;
+    DBusMessageIter iterDict;
 
     if (!dbus.message_iter_open_container(iterInit, DBUS_TYPE_ARRAY, "{sv}", &iterDict)) {
         goto failed;
     }
 
-    if (!dbus.message_iter_open_container(&iterDict, DBUS_TYPE_DICT_ENTRY, NULL, &iterEntry)) {
-        goto failed;
+    for (int i = 0; i < count; i++) {
+        DBusMessageIter iterEntry, iterValue;
+        const char *key = keys[i];
+        const char *value = values[i];
+
+        if (!dbus.message_iter_open_container(&iterDict, DBUS_TYPE_DICT_ENTRY, NULL, &iterEntry)) {
+            goto failed;
+        }
+
+        if (!dbus.message_iter_append_basic(&iterEntry, DBUS_TYPE_STRING, &key)) {
+            goto failed;
+        }
+
+        if (!dbus.message_iter_open_container(&iterEntry, DBUS_TYPE_VARIANT, DBUS_TYPE_STRING_AS_STRING, &iterValue)) {
+            goto failed;
+        }
+
+        if (!dbus.message_iter_append_basic(&iterValue, DBUS_TYPE_STRING, &value)) {
+            goto failed;
+        }
+
+        if (!dbus.message_iter_close_container(&iterEntry, &iterValue) || !dbus.message_iter_close_container(&iterDict, &iterEntry)) {
+            goto failed;
+        }
     }
 
-    if (!dbus.message_iter_append_basic(&iterEntry, DBUS_TYPE_STRING, &key)) {
-        goto failed;
-    }
-
-    if (!dbus.message_iter_open_container(&iterEntry, DBUS_TYPE_VARIANT, DBUS_TYPE_STRING_AS_STRING, &iterValue)) {
-        goto failed;
-    }
-
-    if (!dbus.message_iter_append_basic(&iterValue, DBUS_TYPE_STRING, &value)) {
-        goto failed;
-    }
-
-    if (!dbus.message_iter_close_container(&iterEntry, &iterValue) || !dbus.message_iter_close_container(&iterDict, &iterEntry) || !dbus.message_iter_close_container(iterInit, &iterDict)) {
+    if (!dbus.message_iter_close_container(iterInit, &iterDict)) {
         goto failed;
     }
 
@@ -407,11 +415,21 @@ failed:
     return SDL_FALSE;
 }
 
+static SDL_bool SDL_DBus_AppendDictWithKeyValue(DBusMessageIter *iterInit, const char *key, const char *value)
+{
+   const char *keys[1];
+   const char *values[1];
+
+   keys[0] = key;
+   values[0] = value;
+   return SDL_DBus_AppendDictWithKeysAndValues(iterInit, keys, values, 1);
+}
+
 SDL_bool SDL_DBus_ScreensaverInhibit(SDL_bool inhibit)
 {
     const char *default_inhibit_reason = "Playing a game";
 
-    if ((inhibit && (screensaver_cookie != 0 || inhibit_handle != NULL)) || (!inhibit && (screensaver_cookie == 0 && inhibit_handle == NULL))) {
+    if ((inhibit && (screensaver_cookie != 0 || inhibit_handle)) || (!inhibit && (screensaver_cookie == 0 && !inhibit_handle))) {
         return SDL_TRUE;
     }
 
@@ -435,12 +453,12 @@ SDL_bool SDL_DBus_ScreensaverInhibit(SDL_bool inhibit)
             const char *key = "reason";
             const char *reply = NULL;
             const char *reason = SDL_GetHint(SDL_HINT_SCREENSAVER_INHIBIT_ACTIVITY_NAME);
-            if (reason == NULL || !reason[0]) {
+            if (!reason || !reason[0]) {
                 reason = default_inhibit_reason;
             }
 
             msg = dbus.message_new_method_call(bus_name, path, interface, "Inhibit");
-            if (msg == NULL) {
+            if (!msg) {
                 return SDL_FALSE;
             }
 
@@ -450,6 +468,8 @@ SDL_bool SDL_DBus_ScreensaverInhibit(SDL_bool inhibit)
             }
 
             dbus.message_iter_init_append(msg, &iterInit);
+
+            /* a{sv} */
             if (!SDL_DBus_AppendDictWithKeyValue(&iterInit, key, reason)) {
                 dbus.message_unref(msg);
                 return SDL_FALSE;
@@ -477,10 +497,10 @@ SDL_bool SDL_DBus_ScreensaverInhibit(SDL_bool inhibit)
         if (inhibit) {
             const char *app = SDL_GetHint(SDL_HINT_APP_NAME);
             const char *reason = SDL_GetHint(SDL_HINT_SCREENSAVER_INHIBIT_ACTIVITY_NAME);
-            if (app == NULL || !app[0]) {
+            if (!app || !app[0]) {
                 app = "My SDL application";
             }
-            if (reason == NULL || !reason[0]) {
+            if (!reason || !reason[0]) {
                 reason = default_inhibit_reason;
             }
 
@@ -489,7 +509,7 @@ SDL_bool SDL_DBus_ScreensaverInhibit(SDL_bool inhibit)
                                      DBUS_TYPE_UINT32, &screensaver_cookie, DBUS_TYPE_INVALID)) {
                 return SDL_FALSE;
             }
-            return (screensaver_cookie != 0) ? SDL_TRUE : SDL_FALSE;
+            return (screensaver_cookie != 0);
         } else {
             if (!SDL_DBus_CallVoidMethod(bus_name, path, interface, "UnInhibit", DBUS_TYPE_UINT32, &screensaver_cookie, DBUS_TYPE_INVALID)) {
                 return SDL_FALSE;
@@ -499,6 +519,18 @@ SDL_bool SDL_DBus_ScreensaverInhibit(SDL_bool inhibit)
     }
 
     return SDL_TRUE;
+}
+
+void SDL_DBus_PumpEvents(void)
+{
+    if (dbus.session_conn) {
+        dbus.connection_read_write(dbus.session_conn, 0);
+
+        while (dbus.connection_dispatch(dbus.session_conn) == DBUS_DISPATCH_DATA_REMAINS) {
+            /* Do nothing, actual work happens in DBus_MessageFilter */
+            SDL_DelayNS(SDL_US_TO_NS(10));
+        }
+    }
 }
 
 /*
@@ -534,6 +566,70 @@ char *SDL_DBus_GetLocalMachineId(void)
 
     return NULL;
 }
-#endif
 
-/* vi: set ts=4 sw=4 expandtab: */
+/*
+ * Convert file drops with mime type "application/vnd.portal.filetransfer" to file paths
+ * Result must be freed with dbus->free_string_array().
+ * https://flatpak.github.io/xdg-desktop-portal/#gdbus-method-org-freedesktop-portal-FileTransfer.RetrieveFiles
+ */
+char **SDL_DBus_DocumentsPortalRetrieveFiles(const char *key, int *path_count)
+{
+    DBusError err;
+    DBusMessageIter iter, iterDict;
+    char **paths = NULL;
+    DBusMessage *reply = NULL;
+    DBusMessage *msg = dbus.message_new_method_call("org.freedesktop.portal.Documents",    /* Node */
+                                                    "/org/freedesktop/portal/documents",   /* Path */
+                                                    "org.freedesktop.portal.FileTransfer", /* Interface */
+                                                    "RetrieveFiles");                      /* Method */
+
+    /* Make sure we have a connection to the dbus session bus */
+    if (!SDL_DBus_GetContext() || !dbus.session_conn) {
+        /* We either cannot connect to the session bus or were unable to
+         * load the D-Bus library at all. */
+        return NULL;
+    }
+
+    dbus.error_init(&err);
+
+    /* First argument is a "application/vnd.portal.filetransfer" key from a DnD or clipboard event */
+    if (!dbus.message_append_args(msg, DBUS_TYPE_STRING, &key, DBUS_TYPE_INVALID)) {
+        SDL_OutOfMemory();
+        dbus.message_unref(msg);
+        goto failed;
+    }
+
+    /* Second argument is a variant dictionary for options.
+     * The spec doesn't define any entries yet so it's empty. */
+    dbus.message_iter_init_append(msg, &iter);
+    if (!dbus.message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "{sv}", &iterDict) ||
+        !dbus.message_iter_close_container(&iter,  &iterDict)) {
+        SDL_OutOfMemory();
+        dbus.message_unref(msg);
+        goto failed;
+    }
+
+    reply = dbus.connection_send_with_reply_and_block(dbus.session_conn, msg, DBUS_TIMEOUT_USE_DEFAULT, &err);
+    dbus.message_unref(msg);
+
+    if (reply) {
+        dbus.message_get_args(reply, &err, DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &paths, path_count, DBUS_TYPE_INVALID);
+        dbus.message_unref(reply);
+    }
+
+    if (paths) {
+        return paths;
+    }
+
+failed:
+    if (dbus.error_is_set(&err)) {
+        SDL_SetError("%s: %s", err.name, err.message);
+        dbus.error_free(&err);
+    } else {
+        SDL_SetError("Error retrieving paths for documents portal \"%s\"", key);
+    }
+
+    return NULL;
+}
+
+#endif

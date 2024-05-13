@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,6 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
+#include "SDL_internal.h"
 
 /* Windows includes */
 #include <agile.h>
@@ -28,8 +29,6 @@
 #endif
 
 /* SDL includes */
-#include "../../SDL_internal.h"
-#include "SDL.h"
 #include "../../video/winrt/SDL_winrtevents_c.h"
 #include "../../video/winrt/SDL_winrtvideo_cpp.h"
 #include "SDL_winrtapp_common.h"
@@ -88,7 +87,7 @@ static void WINRT_OnRenderViaXAML(_In_ Platform::Object ^ sender, _In_ Platform:
 
 int SDL_WinRTInitXAMLApp(int (*mainFunction)(int, char **), void *backgroundPanelAsIInspectable)
 {
-#if WINAPI_FAMILY == WINAPI_FAMILY_PHONE_APP
+#if SDL_WINAPI_FAMILY_PHONE
     return SDL_SetError("XAML support is not yet available in Windows Phone.");
 #else
     // Declare C++/CX namespaces:
@@ -135,7 +134,7 @@ int SDL_WinRTInitXAMLApp(int (*mainFunction)(int, char **), void *backgroundPane
     // CoreWindow.  WinRT will not allow the app's CoreWindow to be accessed via the
     // SDL/WinRT thread.
     if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0) {
-        // SDL_InitSubSystem will, on error, set the SDL error.  Let that propogate to
+        // SDL_InitSubSystem will, on error, set the SDL error.  Let that propagate to
         // the caller to here:
         WINRT_XAMLWasEnabled = oldXAMLWasEnabledValue;
         return -1;
@@ -143,5 +142,5 @@ int SDL_WinRTInitXAMLApp(int (*mainFunction)(int, char **), void *backgroundPane
 
     // All done, for now.
     return 0;
-#endif // WINAPI_FAMILY == WINAPI_FAMILY_PHONE_APP  /  else
+#endif // SDL_WINAPI_FAMILY_PHONE
 }

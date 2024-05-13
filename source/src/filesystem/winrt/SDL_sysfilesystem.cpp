@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,19 +18,14 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 /* TODO, WinRT: remove the need to compile this with C++/CX (/ZW) extensions, and if possible, without C++ at all
  */
 
-#ifdef __WINRT__
+#ifdef SDL_PLATFORM_WINRT
 
 extern "C" {
-#include "SDL_filesystem.h"
-#include "SDL_error.h"
-#include "SDL_hints.h"
-#include "SDL_stdinc.h"
-#include "SDL_system.h"
 #include "../../core/windows/SDL_windows.h"
 }
 
@@ -40,8 +35,7 @@ extern "C" {
 using namespace std;
 using namespace Windows::Storage;
 
-extern "C" const wchar_t *
-SDL_WinRTGetFSPathUNICODE(SDL_WinRT_Path pathType)
+static const wchar_t *SDL_WinRTGetFSPathUNICODE(SDL_WinRT_Path pathType)
 {
     switch (pathType) {
     case SDL_WINRT_PATH_INSTALLED_LOCATION:
@@ -71,7 +65,7 @@ SDL_WinRTGetFSPathUNICODE(SDL_WinRT_Path pathType)
         return path.c_str();
     }
 
-#if (WINAPI_FAMILY != WINAPI_FAMILY_PHONE_APP) || (NTDDI_VERSION > NTDDI_WIN8)
+#if !SDL_WINAPI_FAMILY_PHONE || NTDDI_VERSION > NTDDI_WIN8
     case SDL_WINRT_PATH_ROAMING_FOLDER:
     {
         static wstring path;
@@ -99,8 +93,7 @@ SDL_WinRTGetFSPathUNICODE(SDL_WinRT_Path pathType)
     return NULL;
 }
 
-extern "C" const char *
-SDL_WinRTGetFSPathUTF8(SDL_WinRT_Path pathType)
+extern "C" const char *SDL_WinRTGetFSPath(SDL_WinRT_Path pathType)
 {
     typedef unordered_map<SDL_WinRT_Path, string> UTF8PathMap;
     static UTF8PathMap utf8Paths;
@@ -111,7 +104,7 @@ SDL_WinRTGetFSPathUTF8(SDL_WinRT_Path pathType)
     }
 
     const wchar_t *ucs2Path = SDL_WinRTGetFSPathUNICODE(pathType);
-    if (ucs2Path == NULL) {
+    if (!ucs2Path) {
         return NULL;
     }
 
@@ -121,22 +114,20 @@ SDL_WinRTGetFSPathUTF8(SDL_WinRT_Path pathType)
     return utf8Paths[pathType].c_str();
 }
 
-extern "C" char *
-SDL_GetBasePath(void)
+extern "C" char *SDL_GetBasePath(void)
 {
-    const char *srcPath = SDL_WinRTGetFSPathUTF8(SDL_WINRT_PATH_INSTALLED_LOCATION);
+    const char *srcPath = SDL_WinRTGetFSPath(SDL_WINRT_PATH_INSTALLED_LOCATION);
     size_t destPathLen;
     char *destPath = NULL;
 
-    if (srcPath == NULL) {
+    if (!srcPath) {
         SDL_SetError("Couldn't locate our basepath: %s", SDL_GetError());
         return NULL;
     }
 
     destPathLen = SDL_strlen(srcPath) + 2;
     destPath = (char *)SDL_malloc(destPathLen);
-    if (destPath == NULL) {
-        SDL_OutOfMemory();
+    if (!destPath) {
         return NULL;
     }
 
@@ -144,8 +135,7 @@ SDL_GetBasePath(void)
     return destPath;
 }
 
-extern "C" char *
-SDL_GetPrefPath(const char *org, const char *app)
+extern "C" char *SDL_GetPrefPath(const char *org, const char *app)
 {
     /* WinRT note: The 'SHGetFolderPath' API that is used in Windows 7 and
      * earlier is not available on WinRT or Windows Phone.  WinRT provides
@@ -161,16 +151,16 @@ SDL_GetPrefPath(const char *org, const char *app)
     size_t new_wpath_len = 0;
     BOOL api_result = FALSE;
 
-    if (app == NULL) {
+    if (!app) {
         SDL_InvalidParamError("app");
         return NULL;
     }
-    if (org == NULL) {
+    if (!org) {
         org = "";
     }
 
     srcPath = SDL_WinRTGetFSPathUNICODE(SDL_WINRT_PATH_LOCAL_FOLDER);
-    if (srcPath == NULL) {
+    if (!srcPath) {
         SDL_SetError("Unable to find a source path");
         return NULL;
     }
@@ -182,15 +172,13 @@ SDL_GetPrefPath(const char *org, const char *app)
     SDL_wcslcpy(path, srcPath, SDL_arraysize(path));
 
     worg = WIN_UTF8ToString(org);
-    if (worg == NULL) {
-        SDL_OutOfMemory();
+    if (!worg) {
         return NULL;
     }
 
     wapp = WIN_UTF8ToString(app);
-    if (wapp == NULL) {
+    if (!wapp) {
         SDL_free(worg);
-        SDL_OutOfMemory();
         return NULL;
     }
 
@@ -237,6 +225,34 @@ SDL_GetPrefPath(const char *org, const char *app)
     return retval;
 }
 
-#endif /* __WINRT__ */
+char *SDL_GetUserFolder(SDL_Folder folder)
+{
+    wstring wpath;
 
-/* vi: set ts=4 sw=4 expandtab: */
+    switch (folder) {
+        #define CASEPATH(sym, var) case sym: wpath = Windows::Storage::UserDataPaths::GetDefault()->var->Data(); break
+        CASEPATH(SDL_FOLDER_HOME, Profile);
+        CASEPATH(SDL_FOLDER_DESKTOP, Desktop);
+        CASEPATH(SDL_FOLDER_DOCUMENTS, Documents);
+        CASEPATH(SDL_FOLDER_DOWNLOADS, Downloads);
+        CASEPATH(SDL_FOLDER_MUSIC, Music);
+        CASEPATH(SDL_FOLDER_PICTURES, Pictures);
+        CASEPATH(SDL_FOLDER_SCREENSHOTS, Screenshots);
+        CASEPATH(SDL_FOLDER_TEMPLATES, Templates);
+        CASEPATH(SDL_FOLDER_VIDEOS, Videos);
+        #undef CASEPATH
+        #define UNSUPPPORTED_CASEPATH(sym) SDL_SetError("The %s folder is unsupported on WinRT", #sym); return NULL;
+        UNSUPPPORTED_CASEPATH(SDL_FOLDER_PUBLICSHARE);
+        UNSUPPPORTED_CASEPATH(SDL_FOLDER_SAVEDGAMES);
+        #undef UNSUPPPORTED_CASEPATH
+        default:
+            SDL_SetError("Invalid SDL_Folder: %d", (int)folder);
+            return NULL;
+    };
+
+    wpath += L"\\";
+
+    return WIN_StringToUTF8(wpath.c_str());
+}
+
+#endif /* SDL_PLATFORM_WINRT */

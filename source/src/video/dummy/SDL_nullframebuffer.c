@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,46 +18,45 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_DUMMY
+#ifdef SDL_VIDEO_DRIVER_DUMMY
 
 #include "../SDL_sysvideo.h"
+#include "../../SDL_properties_c.h"
 #include "SDL_nullframebuffer_c.h"
 
-#define DUMMY_SURFACE "_SDL_DummySurface"
+#define DUMMY_SURFACE "SDL.internal.window.surface"
 
-int SDL_DUMMY_CreateWindowFramebuffer(_THIS, SDL_Window *window, Uint32 *format, void **pixels, int *pitch)
+
+int SDL_DUMMY_CreateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window *window, SDL_PixelFormatEnum *format, void **pixels, int *pitch)
 {
     SDL_Surface *surface;
-    const Uint32 surface_format = SDL_PIXELFORMAT_RGB888;
+    const SDL_PixelFormatEnum surface_format = SDL_PIXELFORMAT_XRGB8888;
     int w, h;
 
-    /* Free the old framebuffer surface */
-    SDL_DUMMY_DestroyWindowFramebuffer(_this, window);
-
-    /* Create a new one */
+    /* Create a new framebuffer */
     SDL_GetWindowSizeInPixels(window, &w, &h);
-    surface = SDL_CreateRGBSurfaceWithFormat(0, w, h, 0, surface_format);
-    if (surface == NULL) {
+    surface = SDL_CreateSurface(w, h, surface_format);
+    if (!surface) {
         return -1;
     }
 
     /* Save the info and return! */
-    SDL_SetWindowData(window, DUMMY_SURFACE, surface);
+    SDL_SetSurfaceProperty(SDL_GetWindowProperties(window), DUMMY_SURFACE, surface);
     *format = surface_format;
     *pixels = surface->pixels;
     *pitch = surface->pitch;
     return 0;
 }
 
-int SDL_DUMMY_UpdateWindowFramebuffer(_THIS, SDL_Window *window, const SDL_Rect *rects, int numrects)
+int SDL_DUMMY_UpdateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window *window, const SDL_Rect *rects, int numrects)
 {
     static int frame_number;
     SDL_Surface *surface;
 
-    surface = (SDL_Surface *)SDL_GetWindowData(window, DUMMY_SURFACE);
-    if (surface == NULL) {
+    surface = (SDL_Surface *)SDL_GetProperty(SDL_GetWindowProperties(window), DUMMY_SURFACE, NULL);
+    if (!surface) {
         return SDL_SetError("Couldn't find dummy surface for window");
     }
 
@@ -71,14 +70,9 @@ int SDL_DUMMY_UpdateWindowFramebuffer(_THIS, SDL_Window *window, const SDL_Rect 
     return 0;
 }
 
-void SDL_DUMMY_DestroyWindowFramebuffer(_THIS, SDL_Window *window)
+void SDL_DUMMY_DestroyWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window *window)
 {
-    SDL_Surface *surface;
-
-    surface = (SDL_Surface *)SDL_SetWindowData(window, DUMMY_SURFACE, NULL);
-    SDL_FreeSurface(surface);
+    SDL_ClearProperty(SDL_GetWindowProperties(window), DUMMY_SURFACE);
 }
 
 #endif /* SDL_VIDEO_DRIVER_DUMMY */
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,9 +18,9 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_ANDROID
+#ifdef SDL_VIDEO_DRIVER_ANDROID
 
 #include <android/log.h>
 
@@ -313,6 +313,8 @@ static SDL_Scancode Android_Keycodes[] = {
     SDL_SCANCODE_PASTE,            /* AKEYCODE_PASTE */
 };
 
+static SDL_bool SDL_screen_keyboard_shown;
+
 static SDL_Scancode TranslateKeycode(int keycode)
 {
     SDL_Scancode scancode = SDL_SCANCODE_UNKNOWN;
@@ -328,47 +330,49 @@ static SDL_Scancode TranslateKeycode(int keycode)
 
 int Android_OnKeyDown(int keycode)
 {
-    return SDL_SendKeyboardKey(SDL_PRESSED, TranslateKeycode(keycode));
+    return SDL_SendKeyboardKey(0, SDL_DEFAULT_KEYBOARD_ID, SDL_PRESSED, TranslateKeycode(keycode));
 }
 
 int Android_OnKeyUp(int keycode)
 {
-    return SDL_SendKeyboardKey(SDL_RELEASED, TranslateKeycode(keycode));
+    return SDL_SendKeyboardKey(0, SDL_DEFAULT_KEYBOARD_ID, SDL_RELEASED, TranslateKeycode(keycode));
 }
 
-SDL_bool Android_HasScreenKeyboardSupport(_THIS)
+SDL_bool Android_HasScreenKeyboardSupport(SDL_VideoDevice *_this)
 {
     return SDL_TRUE;
 }
 
-SDL_bool Android_IsScreenKeyboardShown(_THIS, SDL_Window *window)
+void Android_ShowScreenKeyboard(SDL_VideoDevice *_this, SDL_Window *window)
+{
+    SDL_VideoData *videodata = _this->driverdata;
+    Android_JNI_ShowScreenKeyboard(&videodata->textRect);
+    SDL_screen_keyboard_shown = SDL_TRUE;
+}
+
+void Android_HideScreenKeyboard(SDL_VideoDevice *_this, SDL_Window *window)
+{
+    Android_JNI_HideScreenKeyboard();
+    SDL_screen_keyboard_shown = SDL_FALSE;
+}
+
+void Android_RestoreScreenKeyboardOnResume(SDL_VideoDevice *_this, SDL_Window *window)
+{
+    if (SDL_screen_keyboard_shown) {
+        Android_ShowScreenKeyboard(_this, window);
+    }
+}
+
+SDL_bool Android_IsScreenKeyboardShown(SDL_VideoDevice *_this, SDL_Window *window)
 {
     return Android_JNI_IsScreenKeyboardShown();
 }
 
-void Android_StartTextInput(_THIS)
+int Android_SetTextInputRect(SDL_VideoDevice *_this, const SDL_Rect *rect)
 {
-    SDL_VideoData *videodata = (SDL_VideoData *)_this->driverdata;
-    Android_JNI_ShowTextInput(&videodata->textRect);
-}
-
-void Android_StopTextInput(_THIS)
-{
-    Android_JNI_HideTextInput();
-}
-
-void Android_SetTextInputRect(_THIS, const SDL_Rect *rect)
-{
-    SDL_VideoData *videodata = (SDL_VideoData *)_this->driverdata;
-
-    if (rect == NULL) {
-        SDL_InvalidParamError("rect");
-        return;
-    }
-
+    SDL_VideoData *videodata = _this->driverdata;
     videodata->textRect = *rect;
+    return 0;
 }
 
 #endif /* SDL_VIDEO_DRIVER_ANDROID */
-
-/* vi: set ts=4 sw=4 expandtab: */

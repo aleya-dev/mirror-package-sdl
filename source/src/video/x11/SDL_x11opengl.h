@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,14 +18,24 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_x11opengl_h_
 #define SDL_x11opengl_h_
 
-#if SDL_VIDEO_OPENGL_GLX
-#include "SDL_opengl.h"
+#ifdef SDL_VIDEO_OPENGL_GLX
+#include <SDL3/SDL_opengl.h>
 #include <GL/glx.h>
+
+typedef void (*__GLXextFuncPtr)(void);
+
+typedef enum SDL_GLSwapIntervalTearBehavior
+{
+    SDL_SWAPINTERVALTEAR_UNTESTED,
+    SDL_SWAPINTERVALTEAR_UNKNOWN,
+    SDL_SWAPINTERVALTEAR_MESA,
+    SDL_SWAPINTERVALTEAR_NVIDIA
+} SDL_GLSwapIntervalTearBehavior;
 
 struct SDL_GLDriverData
 {
@@ -48,8 +58,10 @@ struct SDL_GLDriverData
         int minor;
     } es_profile_max_supported_version;
 
+    SDL_GLSwapIntervalTearBehavior swap_interval_tear_behavior;
+
     Bool (*glXQueryExtension)(Display *, int *, int *);
-    void *(*glXGetProcAddress)(const GLubyte *);
+    __GLXextFuncPtr (*glXGetProcAddress)(const GLubyte *);
     XVisualInfo *(*glXChooseVisual)(Display *, int, int *);
     GLXContext (*glXCreateContext)(Display *, XVisualInfo *, GLXContext, Bool);
     GLXContext (*glXCreateContextAttribsARB)(Display *, GLXFBConfig, GLXContext, Bool, const int *);
@@ -66,21 +78,19 @@ struct SDL_GLDriverData
 };
 
 /* OpenGL functions */
-extern int X11_GL_LoadLibrary(_THIS, const char *path);
-extern void *X11_GL_GetProcAddress(_THIS, const char *proc);
-extern void X11_GL_UnloadLibrary(_THIS);
-extern SDL_bool X11_GL_UseEGL(_THIS);
-extern XVisualInfo *X11_GL_GetVisual(_THIS, Display *display, int screen);
-extern SDL_GLContext X11_GL_CreateContext(_THIS, SDL_Window *window);
-extern int X11_GL_MakeCurrent(_THIS, SDL_Window *window,
+extern int X11_GL_LoadLibrary(SDL_VideoDevice *_this, const char *path);
+extern SDL_FunctionPointer X11_GL_GetProcAddress(SDL_VideoDevice *_this, const char *proc);
+extern void X11_GL_UnloadLibrary(SDL_VideoDevice *_this);
+extern SDL_bool X11_GL_UseEGL(SDL_VideoDevice *_this);
+extern XVisualInfo *X11_GL_GetVisual(SDL_VideoDevice *_this, Display *display, int screen, SDL_bool transparent);
+extern SDL_GLContext X11_GL_CreateContext(SDL_VideoDevice *_this, SDL_Window *window);
+extern int X11_GL_MakeCurrent(SDL_VideoDevice *_this, SDL_Window *window,
                               SDL_GLContext context);
-extern int X11_GL_SetSwapInterval(_THIS, int interval);
-extern int X11_GL_GetSwapInterval(_THIS);
-extern int X11_GL_SwapWindow(_THIS, SDL_Window *window);
-extern void X11_GL_DeleteContext(_THIS, SDL_GLContext context);
+extern int X11_GL_SetSwapInterval(SDL_VideoDevice *_this, int interval);
+extern int X11_GL_GetSwapInterval(SDL_VideoDevice *_this, int *interval);
+extern int X11_GL_SwapWindow(SDL_VideoDevice *_this, SDL_Window *window);
+extern int X11_GL_DeleteContext(SDL_VideoDevice *_this, SDL_GLContext context);
 
 #endif /* SDL_VIDEO_OPENGL_GLX */
 
 #endif /* SDL_x11opengl_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

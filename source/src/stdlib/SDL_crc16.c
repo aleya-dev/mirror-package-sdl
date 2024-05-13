@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,10 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../SDL_internal.h"
-
-#include "SDL_stdinc.h"
-
+#include "SDL_internal.h"
 
 /* Public domain CRC implementation adapted from:
    http://home.thep.lu.se/~bjorn/crc/crc32_simple.c
@@ -53,5 +50,3 @@ Uint16 SDL_crc16(Uint16 crc, const void *data, size_t len)
     }
     return crc;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -9,27 +9,23 @@
   including commercial applications, and to alter it and redistribute it
   freely.
 */
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
 
-#ifdef __EMSCRIPTEN__
+#include <SDL3/SDL_test_common.h>
+#include <SDL3/SDL_main.h>
+
+#ifdef SDL_PLATFORM_EMSCRIPTEN
 #include <emscripten/emscripten.h>
 #endif
 
-#include "SDL_test_common.h"
+#include <stdlib.h>
 
-#if defined(__IPHONEOS__) || defined(__ANDROID__) || defined(__EMSCRIPTEN__) || defined(__NACL__) \
-    || defined(__WINDOWS__) || defined(__LINUX__)
-#ifndef HAVE_OPENGLES2
+#if defined(SDL_PLATFORM_IOS) || defined(SDL_PLATFORM_ANDROID) || defined(SDL_PLATFORM_EMSCRIPTEN) || defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_LINUX)
 #define HAVE_OPENGLES2
-#endif
 #endif
 
 #ifdef HAVE_OPENGLES2
 
-#include "SDL_opengles2.h"
+#include <SDL3/SDL_opengles2.h>
 
 typedef struct GLES2_Context
 {
@@ -51,9 +47,18 @@ typedef struct shader_data
     GLuint color_buffer;
 } shader_data;
 
+typedef enum wait_state
+{
+    WAIT_STATE_GO = 0,
+    WAIT_STATE_ENTER_SEM,
+    WAIT_STATE_WAITING_ON_SEM,
+} wait_state;
+
 typedef struct thread_data
 {
     SDL_Thread *thread;
+    SDL_Semaphore *suspend_sem;
+    SDL_AtomicInt suspended;
     int done;
     int index;
 } thread_data;
@@ -61,15 +66,14 @@ typedef struct thread_data
 static SDLTest_CommonState *state;
 static SDL_GLContext *context = NULL;
 static int depth = 16;
+static SDL_bool suspend_when_occluded;
 static GLES2_Context ctx;
 
 static int LoadContext(GLES2_Context *data)
 {
-#if SDL_VIDEO_DRIVER_UIKIT
+#ifdef SDL_VIDEO_DRIVER_UIKIT
 #define __SDL_NOGETPROCADDR__
-#elif SDL_VIDEO_DRIVER_ANDROID
-#define __SDL_NOGETPROCADDR__
-#elif SDL_VIDEO_DRIVER_PANDORA
+#elif defined(SDL_VIDEO_DRIVER_ANDROID)
 #define __SDL_NOGETPROCADDR__
 #endif
 
@@ -78,7 +82,7 @@ static int LoadContext(GLES2_Context *data)
 #else
 #define SDL_PROC(ret, func, params)                                                            \
     do {                                                                                       \
-        data->func = SDL_GL_GetProcAddress(#func);                                             \
+        data->func = (ret (APIENTRY *) params)SDL_GL_GetProcAddress(#func);                    \
         if (!data->func) {                                                                     \
             return SDL_SetError("Couldn't load GLES2 function %s: %s", #func, SDL_GetError()); \
         }                                                                                      \
@@ -96,7 +100,7 @@ quit(int rc)
 {
     int i;
 
-    if (context != NULL) {
+    if (context) {
         for (i = 0; i < state->num_windows; i++) {
             if (context[i]) {
                 SDL_GL_DeleteContext(context[i]);
@@ -107,7 +111,10 @@ quit(int rc)
     }
 
     SDLTest_CommonQuit(state);
-    exit(rc);
+    /* Let 'main()' return normally */
+    if (rc != 0) {
+        exit(rc);
+    }
 }
 
 #define GL_CHECK(x)                                                                         \
@@ -120,7 +127,7 @@ quit(int rc)
         }                                                                                   \
     }
 
-/*
+/**
  * Simulates desktop's glRotatef. The matrix is returned in column-major
  * order.
  */
@@ -130,7 +137,7 @@ rotate_matrix(float angle, float x, float y, float z, float *r)
     float radians, c, s, c1, u[3], length;
     int i, j;
 
-    radians = (float)(angle * M_PI) / 180.0f;
+    radians = (angle * SDL_PI_F) / 180.0f;
 
     c = SDL_cosf(radians);
     s = SDL_sinf(radians);
@@ -161,7 +168,7 @@ rotate_matrix(float angle, float x, float y, float z, float *r)
     }
 }
 
-/*
+/**
  * Simulates gluPerspectiveMatrix
  */
 static void
@@ -184,7 +191,7 @@ perspective_matrix(float fovy, float aspect, float znear, float zfar, float *r)
     r[15] = 0.0f;
 }
 
-/*
+/**
  * Multiplies lhs by rhs and writes out to r. All matrices are 4x4 and column
  * major. In-place multiplication is supported.
  */
@@ -209,7 +216,7 @@ multiply_matrix(const float *lhs, const float *rhs, float *r)
     }
 }
 
-/*
+/**
  * Create shader, load in source, compile, dump debug as necessary.
  *
  * shader: Pointer to return created shader ID.
@@ -243,7 +250,6 @@ process_shader(GLuint *shader, const char *source, GLint shader_type)
         ctx.glGetShaderInfoLog(*shader, sizeof(buffer), &length, &buffer[0]);
         buffer[length] = '\0';
         SDL_Log("Shader compilation failed: %s", buffer);
-        fflush(stderr);
         quit(-1);
     }
 }
@@ -261,17 +267,16 @@ link_program(struct shader_data *data)
     GL_CHECK(ctx.glGetProgramiv(data->shader_program, GL_LINK_STATUS, &status));
 
     if (status != GL_TRUE) {
-         ctx.glGetProgramInfoLog(data->shader_program, sizeof(buffer), &length, &buffer[0]);
-         buffer[length] = '\0';
-         SDL_Log("Program linking failed: %s", buffer);
-         fflush(stderr);
-         quit(-1);
+        ctx.glGetProgramInfoLog(data->shader_program, sizeof(buffer), &length, &buffer[0]);
+        buffer[length] = '\0';
+        SDL_Log("Program linking failed: %s", buffer);
+        quit(-1);
     }
 }
 
 /* 3D data. Vertex range -0.5..0.5 in all axes.
  * Z -0.5 is near, 0.5 is far. */
-const float _vertices[] = {
+static const float g_vertices[] = {
     /* Front face. */
     /* Bottom left */
     -0.5,
@@ -400,7 +405,7 @@ const float _vertices[] = {
     0.5,
 };
 
-const float _colors[] = {
+static const float g_colors[] = {
     /* Front face */
     /* Bottom left */
     1.0, 0.0, 0.0, /* red */
@@ -457,7 +462,7 @@ const float _colors[] = {
     1.0, 0.0, 1.0, /* magenta */
 };
 
-const char *_shader_vert_src =
+static const char *g_shader_vert_src =
     " attribute vec4 av4position; "
     " attribute vec3 av3color; "
     " uniform mat4 mvp; "
@@ -467,7 +472,7 @@ const char *_shader_vert_src =
     "    gl_Position = mvp * av4position; "
     " } ";
 
-const char *_shader_frag_src =
+static const char *g_shader_frag_src =
     " precision lowp float; "
     " varying vec3 vv3color; "
     " void main() { "
@@ -528,10 +533,12 @@ Render(unsigned int width, unsigned int height, shader_data *data)
     GL_CHECK(ctx.glDrawArrays(GL_TRIANGLES, 0, 36));
 }
 
-int done;
-Uint32 frames;
-shader_data *datas;
-thread_data *threads;
+static int done;
+static Uint32 frames;
+static shader_data *datas;
+#ifndef SDL_PLATFORM_EMSCRIPTEN
+static thread_data *threads;
+#endif
 
 static void
 render_window(int index)
@@ -548,19 +555,22 @@ render_window(int index)
         return;
     }
 
-    SDL_GL_GetDrawableSize(state->windows[index], &w, &h);
+    SDL_GetWindowSizeInPixels(state->windows[index], &w, &h);
     Render(w, h, &datas[index]);
     SDL_GL_SwapWindow(state->windows[index]);
     ++frames;
 }
 
-#ifndef __EMSCRIPTEN__
+#ifndef SDL_PLATFORM_EMSCRIPTEN
 static int SDLCALL
 render_thread_fn(void *render_ctx)
 {
     thread_data *thread = render_ctx;
 
     while (!done && !thread->done && state->windows[thread->index]) {
+        if (SDL_AtomicCompareAndSwap(&thread->suspended, WAIT_STATE_ENTER_SEM, WAIT_STATE_WAITING_ON_SEM)) {
+            SDL_WaitSemaphore(thread->suspend_sem);
+        }
         render_window(thread->index);
     }
 
@@ -568,28 +578,53 @@ render_thread_fn(void *render_ctx)
     return 0;
 }
 
+static thread_data *GetThreadDataForWindow(SDL_WindowID id)
+{
+    int i;
+    SDL_Window *window = SDL_GetWindowFromID(id);
+    if (window) {
+        for (i = 0; i < state->num_windows; ++i) {
+            if (window == state->windows[i]) {
+                return &threads[i];
+            }
+        }
+    }
+    return NULL;
+}
+
 static void
-loop_threaded()
+loop_threaded(void)
 {
     SDL_Event event;
-    int i;
+    thread_data *tdata;
 
     /* Wait for events */
     while (SDL_WaitEvent(&event) && !done) {
-        if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE) {
-            SDL_Window *window = SDL_GetWindowFromID(event.window.windowID);
-            if (window) {
-                for (i = 0; i < state->num_windows; ++i) {
-                    if (window == state->windows[i]) {
-                        /* Stop the render thread when the window is closed */
-                        threads[i].done = 1;
-                        if (threads[i].thread) {
-                            SDL_WaitThread(threads[i].thread, NULL);
-                            threads[i].thread = NULL;
-                        }
-                        break;
-                    }
+        if (suspend_when_occluded && event.type == SDL_EVENT_WINDOW_OCCLUDED) {
+            tdata = GetThreadDataForWindow(event.window.windowID);
+            if (tdata) {
+                SDL_AtomicCompareAndSwap(&tdata->suspended, WAIT_STATE_GO, WAIT_STATE_ENTER_SEM);
+            }
+        } else if (suspend_when_occluded && event.type == SDL_EVENT_WINDOW_EXPOSED) {
+            tdata = GetThreadDataForWindow(event.window.windowID);
+            if (tdata) {
+                if (SDL_AtomicSet(&tdata->suspended, WAIT_STATE_GO) == WAIT_STATE_WAITING_ON_SEM) {
+                    SDL_PostSemaphore(tdata->suspend_sem);
                 }
+            }
+        } else if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
+            tdata = GetThreadDataForWindow(event.window.windowID);
+            if (tdata) {
+                /* Stop the render thread when the window is closed */
+                tdata->done = 1;
+                if (tdata->thread) {
+                    SDL_AtomicSet(&tdata->suspended, WAIT_STATE_GO);
+                    SDL_PostSemaphore(tdata->suspend_sem);
+                    SDL_WaitThread(tdata->thread, NULL);
+                    tdata->thread = NULL;
+                    SDL_DestroySemaphore(tdata->suspend_sem);
+                }
+                break;
             }
         }
         SDLTest_CommonEvent(state, &event, &done);
@@ -598,10 +633,11 @@ loop_threaded()
 #endif
 
 static void
-loop()
+loop(void)
 {
     SDL_Event event;
     int i;
+    int active_windows = 0;
 
     /* Check for events */
     while (SDL_PollEvent(&event) && !done) {
@@ -609,14 +645,24 @@ loop()
     }
     if (!done) {
         for (i = 0; i < state->num_windows; ++i) {
+            if (state->windows[i] == NULL ||
+                (suspend_when_occluded && (SDL_GetWindowFlags(state->windows[i]) & SDL_WINDOW_OCCLUDED))) {
+                continue;
+            }
+            ++active_windows;
             render_window(i);
         }
     }
-#ifdef __EMSCRIPTEN__
+#ifdef SDL_PLATFORM_EMSCRIPTEN
     else {
         emscripten_cancel_main_loop();
     }
 #endif
+
+    /* If all windows are occluded, throttle event polling to 15hz. */
+    if (!done && !active_windows) {
+        SDL_DelayNS(SDL_NS_PER_SECOND / 15);
+    }
 }
 
 int main(int argc, char *argv[])
@@ -624,8 +670,8 @@ int main(int argc, char *argv[])
     int fsaa, accel, threaded;
     int value;
     int i;
-    SDL_DisplayMode mode;
-    Uint32 then, now;
+    const SDL_DisplayMode *mode;
+    Uint64 then, now;
     int status;
     shader_data *data;
 
@@ -636,7 +682,7 @@ int main(int argc, char *argv[])
 
     /* Initialize test framework */
     state = SDLTest_CommonCreateState(argv, SDL_INIT_VIDEO);
-    if (state == NULL) {
+    if (!state) {
         return 1;
     }
     for (i = 1; i < argc;) {
@@ -653,20 +699,28 @@ int main(int argc, char *argv[])
             } else if (SDL_strcasecmp(argv[i], "--threaded") == 0) {
                 ++threaded;
                 consumed = 1;
+            } else if(SDL_strcasecmp(argv[i], "--suspend-when-occluded") == 0) {
+                suspend_when_occluded = SDL_TRUE;
+                consumed = 1;
             } else if (SDL_strcasecmp(argv[i], "--zdepth") == 0) {
                 i++;
                 if (!argv[i]) {
                     consumed = -1;
                 } else {
-                    depth = SDL_atoi(argv[i]);
-                    consumed = 1;
+                    char *endptr = NULL;
+                    depth = (int)SDL_strtol(argv[i], &endptr, 0);
+                    if (endptr != argv[i] && *endptr == '\0') {
+                        consumed = 1;
+                    } else {
+                        consumed = -1;
+                    }
                 }
             } else {
                 consumed = -1;
             }
         }
         if (consumed < 0) {
-            static const char *options[] = { "[--fsaa]", "[--accel]", "[--zdepth %d]", "[--threaded]", NULL };
+            static const char *options[] = { "[--fsaa]", "[--accel]", "[--zdepth %d]", "[--threaded]", "[--suspend-when-occluded]",NULL };
             SDLTest_CommonLogUsage(state, argv[0], options);
             quit(1);
         }
@@ -696,7 +750,7 @@ int main(int argc, char *argv[])
     }
 
     context = (SDL_GLContext *)SDL_calloc(state->num_windows, sizeof(*context));
-    if (context == NULL) {
+    if (!context) {
         SDL_Log("Out of memory!\n");
         quit(2);
     }
@@ -723,10 +777,12 @@ int main(int argc, char *argv[])
         SDL_GL_SetSwapInterval(0);
     }
 
-    SDL_GetCurrentDisplayMode(0, &mode);
+    mode = SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay());
     SDL_Log("Threaded  : %s\n", threaded ? "yes" : "no");
-    SDL_Log("Screen bpp: %d\n", SDL_BITSPERPIXEL(mode.format));
-    SDL_Log("\n");
+    if (mode) {
+        SDL_Log("Screen bpp: %d\n", SDL_BITSPERPIXEL(mode->format));
+        SDL_Log("\n");
+    }
     SDL_Log("Vendor     : %s\n", ctx.glGetString(GL_VENDOR));
     SDL_Log("Renderer   : %s\n", ctx.glGetString(GL_RENDERER));
     SDL_Log("Version    : %s\n", ctx.glGetString(GL_VERSION));
@@ -801,7 +857,7 @@ int main(int argc, char *argv[])
             /* Continue for next window */
             continue;
         }
-        SDL_GL_GetDrawableSize(state->windows[i], &w, &h);
+        SDL_GetWindowSizeInPixels(state->windows[i], &w, &h);
         ctx.glViewport(0, 0, w, h);
 
         data = &datas[i];
@@ -810,8 +866,8 @@ int main(int argc, char *argv[])
         data->angle_z = 0;
 
         /* Shader Initialization */
-        process_shader(&data->shader_vert, _shader_vert_src, GL_VERTEX_SHADER);
-        process_shader(&data->shader_frag, _shader_frag_src, GL_FRAGMENT_SHADER);
+        process_shader(&data->shader_vert, g_shader_vert_src, GL_VERTEX_SHADER);
+        process_shader(&data->shader_frag, g_shader_frag_src, GL_FRAGMENT_SHADER);
 
         /* Create shader_program (ready to attach shaders) */
         data->shader_program = GL_CHECK(ctx.glCreateProgram());
@@ -836,13 +892,13 @@ int main(int argc, char *argv[])
 
         GL_CHECK(ctx.glGenBuffers(1, &data->position_buffer));
         GL_CHECK(ctx.glBindBuffer(GL_ARRAY_BUFFER, data->position_buffer));
-        GL_CHECK(ctx.glBufferData(GL_ARRAY_BUFFER, sizeof(_vertices), _vertices, GL_STATIC_DRAW));
+        GL_CHECK(ctx.glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertices), g_vertices, GL_STATIC_DRAW));
         GL_CHECK(ctx.glVertexAttribPointer(data->attr_position, 3, GL_FLOAT, GL_FALSE, 0, 0));
         GL_CHECK(ctx.glBindBuffer(GL_ARRAY_BUFFER, 0));
 
         GL_CHECK(ctx.glGenBuffers(1, &data->color_buffer));
         GL_CHECK(ctx.glBindBuffer(GL_ARRAY_BUFFER, data->color_buffer));
-        GL_CHECK(ctx.glBufferData(GL_ARRAY_BUFFER, sizeof(_colors), _colors, GL_STATIC_DRAW));
+        GL_CHECK(ctx.glBufferData(GL_ARRAY_BUFFER, sizeof(g_colors), g_colors, GL_STATIC_DRAW));
         GL_CHECK(ctx.glVertexAttribPointer(data->attr_color, 3, GL_FLOAT, GL_FALSE, 0, 0));
         GL_CHECK(ctx.glBindBuffer(GL_ARRAY_BUFFER, 0));
 
@@ -857,7 +913,7 @@ int main(int argc, char *argv[])
     then = SDL_GetTicks();
     done = 0;
 
-#ifdef __EMSCRIPTEN__
+#ifdef SDL_PLATFORM_EMSCRIPTEN
     emscripten_set_main_loop(loop, 0, 1);
 #else
     if (threaded) {
@@ -866,6 +922,8 @@ int main(int argc, char *argv[])
         /* Start a render thread for each window */
         for (i = 0; i < state->num_windows; ++i) {
             threads[i].index = i;
+            SDL_AtomicSet(&threads[i].suspended, 0);
+            threads[i].suspend_sem = SDL_CreateSemaphore(0);
             threads[i].thread = SDL_CreateThread(render_thread_fn, "RenderThread", &threads[i]);
         }
 
@@ -893,9 +951,9 @@ int main(int argc, char *argv[])
         SDL_Log("%2.2f frames per second\n",
                 ((double)frames * 1000) / (now - then));
     }
-#if !defined(__ANDROID__) && !defined(__NACL__)  
+#ifndef SDL_PLATFORM_ANDROID
     quit(0);
-#endif    
+#endif
     return 0;
 }
 
@@ -908,5 +966,3 @@ int main(int argc, char *argv[])
 }
 
 #endif /* HAVE_OPENGLES2 */
-
-/* vi: set ts=4 sw=4 expandtab: */

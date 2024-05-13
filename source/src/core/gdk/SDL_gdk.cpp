@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,14 +18,10 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 extern "C" {
-#include "SDL_system.h"
 #include "../windows/SDL_windows.h"
-#include "SDL_messagebox.h"
-#include "SDL_main.h"
-#include "SDL_events.h"
 #include "../../events/SDL_events_c.h"
 }
 #include <XGameRuntime.h>
@@ -36,6 +32,7 @@ extern "C" {
 static XTaskQueueHandle GDK_GlobalTaskQueue;
 
 PAPPSTATE_REGISTRATION hPLM = {};
+PAPPCONSTRAIN_REGISTRATION hCPLM = {};
 HANDLE plmSuspendComplete = nullptr;
 
 extern "C" DECLSPEC int
@@ -88,7 +85,7 @@ OutOfMemory(void)
 /* Gets the arguments with GetCommandLine, converts them to argc and argv
    and calls SDL_main */
 extern "C" DECLSPEC int
-SDL_GDKRunApp(SDL_main_func mainFunction, void *reserved)
+SDL_RunApp(int, char**, SDL_main_func mainFunction, void *reserved)
 {
     LPWSTR *argvw;
     char **argv;
@@ -161,7 +158,7 @@ SDL_GDKRunApp(SDL_main_func mainFunction, void *reserved)
             SDL_LogDebug(SDL_LOG_CATEGORY_APPLICATION, "[GDK] in RegisterAppStateChangeNotification handler");
             if (quiesced) {
                 ResetEvent(plmSuspendComplete);
-                SDL_SendAppEvent(SDL_APP_DIDENTERBACKGROUND);
+                SDL_SendAppEvent(SDL_EVENT_DID_ENTER_BACKGROUND);
 
                 // To defer suspension, we must wait to exit this callback.
                 // IMPORTANT: The app must call SDL_GDKSuspendComplete() to release this lock.
@@ -169,11 +166,28 @@ SDL_GDKRunApp(SDL_main_func mainFunction, void *reserved)
 
                 SDL_LogDebug(SDL_LOG_CATEGORY_APPLICATION, "[GDK] in RegisterAppStateChangeNotification handler: plmSuspendComplete event signaled.");
             } else {
-                SDL_SendAppEvent(SDL_APP_WILLENTERFOREGROUND);
+                SDL_SendAppEvent(SDL_EVENT_WILL_ENTER_FOREGROUND);
             }
         };
         if (RegisterAppStateChangeNotification(rascn, NULL, &hPLM)) {
             SDL_SetError("[GDK] Unable to call RegisterAppStateChangeNotification");
+            return -1;
+        }
+
+        /* Register constrain/unconstrain handling */
+        auto raccn = [](BOOLEAN constrained, PVOID context) {
+            SDL_LogDebug(SDL_LOG_CATEGORY_APPLICATION, "[GDK] in RegisterAppConstrainedChangeNotification handler");
+            SDL_VideoDevice *_this = SDL_GetVideoDevice();
+            if (_this) {
+                if (constrained) {
+                    SDL_SetKeyboardFocus(NULL);
+                } else {
+                    SDL_SetKeyboardFocus(_this->windows);
+                }
+            }
+        };
+        if (RegisterAppConstrainedChangeNotification(raccn, NULL, &hCPLM)) {
+            SDL_SetError("[GDK] Unable to call RegisterAppConstrainedChangeNotification");
             return -1;
         }
 
@@ -183,6 +197,9 @@ SDL_GDKRunApp(SDL_main_func mainFunction, void *reserved)
         /* Unregister suspend/resume handling */
         UnregisterAppStateChangeNotification(hPLM);
         CloseHandle(plmSuspendComplete);
+
+        /* Unregister constrain/unconstrain handling */
+        UnregisterAppConstrainedChangeNotification(hCPLM);
 
         /* !!! FIXME: This follows the docs exactly, but for some reason still leaks handles on exit? */
         /* Terminate the task queue and dispatch any pending tasks */
@@ -194,7 +211,7 @@ SDL_GDKRunApp(SDL_main_func mainFunction, void *reserved)
 
         XGameRuntimeUninitialize();
     } else {
-#ifdef __WINGDK__
+#ifdef SDL_PLATFORM_WINGDK
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Fatal Error", "[GDK] Could not initialize - aborting", NULL);
 #else
         SDL_assert_always(0 && "[GDK] Could not initialize - aborting");
@@ -217,4 +234,24 @@ SDL_GDKSuspendComplete()
     if (plmSuspendComplete) {
         SetEvent(plmSuspendComplete);
     }
+}
+
+extern "C" DECLSPEC int
+SDL_GDKGetDefaultUser(XUserHandle *outUserHandle)
+{
+    XAsyncBlock block = { 0 };
+    HRESULT result;
+
+    if (FAILED(result = XUserAddAsync(XUserAddOptions::AddDefaultUserAllowingUI, &block))) {
+        return WIN_SetErrorFromHRESULT("XUserAddAsync", result);
+    }
+
+    do {
+        result = XUserAddResult(&block, outUserHandle);
+    } while (result == E_PENDING);
+    if (FAILED(result)) {
+        return WIN_SetErrorFromHRESULT("XUserAddResult", result);
+    }
+
+    return 0;
 }

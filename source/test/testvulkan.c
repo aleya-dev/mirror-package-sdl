@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -10,13 +10,11 @@
   freely.
 */
 #include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
 
-#include "SDL_test_common.h"
+#include <SDL3/SDL_test_common.h>
+#include <SDL3/SDL_main.h>
 
-#if defined(__ANDROID__) && defined(__ARM_EABI__) && !defined(__ARM_ARCH_7A__)
+#if defined(SDL_PLATFORM_ANDROID) && defined(__ARM_EABI__) && !defined(__ARM_ARCH_7A__)
 
 int main(int argc, char *argv[])
 {
@@ -33,7 +31,7 @@ int main(int argc, char *argv[])
 /* SDL includes a copy for building on systems without the Vulkan SDK */
 #include "../src/video/khronos/vulkan/vulkan.h"
 #endif
-#include "SDL_vulkan.h"
+#include <SDL3/SDL_vulkan.h>
 
 #ifndef UINT64_MAX /* VS2008 */
 #define UINT64_MAX 18446744073709551615
@@ -179,8 +177,8 @@ typedef struct VulkanContext
 } VulkanContext;
 
 static SDLTest_CommonState *state;
-static VulkanContext *vulkanContexts = NULL; // an array of state->num_windows items
-static VulkanContext *vulkanContext = NULL;  // for the currently-rendering window
+static VulkanContext *vulkanContexts = NULL; /* an array of state->num_windows items */
+static VulkanContext *vulkanContext = NULL;  /* for the currently-rendering window */
 
 static void shutdownVulkan(SDL_bool doDestroySwapchain);
 
@@ -189,12 +187,15 @@ static void quit(int rc)
 {
     shutdownVulkan(SDL_TRUE);
     SDLTest_CommonQuit(state);
-    exit(rc);
+    /* Let 'main()' return normally */
+    if (rc != 0) {
+        exit(rc);
+    }
 }
 
 static void loadGlobalFunctions(void)
 {
-    vkGetInstanceProcAddr = SDL_Vulkan_GetVkGetInstanceProcAddr();
+    vkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr();
     if (!vkGetInstanceProcAddr) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "SDL_Vulkan_GetVkGetInstanceProcAddr(): %s\n",
@@ -221,36 +222,15 @@ static void createInstance(void)
 {
     VkApplicationInfo appInfo = { 0 };
     VkInstanceCreateInfo instanceCreateInfo = { 0 };
-    const char **extensions = NULL;
-    unsigned extensionCount = 0;
     VkResult result;
 
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.apiVersion = VK_API_VERSION_1_0;
     instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instanceCreateInfo.pApplicationInfo = &appInfo;
-    if (!SDL_Vulkan_GetInstanceExtensions(NULL, &extensionCount, NULL)) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "SDL_Vulkan_GetInstanceExtensions(): %s\n",
-                     SDL_GetError());
-        quit(2);
-    }
-    extensions = (const char **)SDL_malloc(sizeof(const char *) * extensionCount);
-    if (extensions == NULL) {
-        SDL_OutOfMemory();
-        quit(2);
-    }
-    if (!SDL_Vulkan_GetInstanceExtensions(NULL, &extensionCount, extensions)) {
-        SDL_free((void *)extensions);
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "SDL_Vulkan_GetInstanceExtensions(): %s\n",
-                     SDL_GetError());
-        quit(2);
-    }
-    instanceCreateInfo.enabledExtensionCount = extensionCount;
-    instanceCreateInfo.ppEnabledExtensionNames = extensions;
+
+    instanceCreateInfo.ppEnabledExtensionNames = SDL_Vulkan_GetInstanceExtensions(&instanceCreateInfo.enabledExtensionCount);
     result = vkCreateInstance(&instanceCreateInfo, NULL, &vulkanContext->instance);
-    SDL_free((void *)extensions);
     if (result != VK_SUCCESS) {
         vulkanContext->instance = VK_NULL_HANDLE;
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
@@ -281,6 +261,7 @@ static void createSurface(void)
 {
     if (!SDL_Vulkan_CreateSurface(vulkanContext->window,
                                   vulkanContext->instance,
+                                  NULL,
                                   &vulkanContext->surface)) {
         vulkanContext->surface = VK_NULL_HANDLE;
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_Vulkan_CreateSurface(): %s\n", SDL_GetError());
@@ -312,8 +293,7 @@ static void findPhysicalDevice(void)
         quit(2);
     }
     physicalDevices = (VkPhysicalDevice *)SDL_malloc(sizeof(VkPhysicalDevice) * physicalDeviceCount);
-    if (physicalDevices == NULL) {
-        SDL_OutOfMemory();
+    if (!physicalDevices) {
         quit(2);
     }
     result = vkEnumeratePhysicalDevices(vulkanContext->instance, &physicalDeviceCount, physicalDevices);
@@ -346,10 +326,9 @@ static void findPhysicalDevice(void)
             SDL_free(queueFamiliesProperties);
             queueFamiliesPropertiesAllocatedSize = queueFamiliesCount;
             queueFamiliesProperties = (VkQueueFamilyProperties *)SDL_malloc(sizeof(VkQueueFamilyProperties) * queueFamiliesPropertiesAllocatedSize);
-            if (queueFamiliesProperties == NULL) {
+            if (!queueFamiliesProperties) {
                 SDL_free(physicalDevices);
                 SDL_free(deviceExtensions);
-                SDL_OutOfMemory();
                 quit(2);
             }
         }
@@ -408,10 +387,9 @@ static void findPhysicalDevice(void)
             SDL_free(deviceExtensions);
             deviceExtensionsAllocatedSize = deviceExtensionCount;
             deviceExtensions = SDL_malloc(sizeof(VkExtensionProperties) * deviceExtensionsAllocatedSize);
-            if (deviceExtensions == NULL) {
+            if (!deviceExtensions) {
                 SDL_free(physicalDevices);
                 SDL_free(queueFamiliesProperties);
-                SDL_OutOfMemory();
                 quit(2);
             }
         }
@@ -448,7 +426,7 @@ static void findPhysicalDevice(void)
 
 static void createDevice(void)
 {
-    VkDeviceQueueCreateInfo deviceQueueCreateInfo[1] = { { 0 } };
+    VkDeviceQueueCreateInfo deviceQueueCreateInfo[2] = { { 0 }, { 0 } };
     static const float queuePriority[] = { 1.0f };
     VkDeviceCreateInfo deviceCreateInfo = { 0 };
     static const char *const deviceExtensionNames[] = {
@@ -456,17 +434,27 @@ static void createDevice(void)
     };
     VkResult result;
 
-    deviceQueueCreateInfo->sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    deviceQueueCreateInfo->queueFamilyIndex = vulkanContext->graphicsQueueFamilyIndex;
-    deviceQueueCreateInfo->queueCount = 1;
-    deviceQueueCreateInfo->pQueuePriorities = &queuePriority[0];
-
     deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    deviceCreateInfo.queueCreateInfoCount = 1;
+    deviceCreateInfo.queueCreateInfoCount = 0;
     deviceCreateInfo.pQueueCreateInfos = deviceQueueCreateInfo;
     deviceCreateInfo.pEnabledFeatures = NULL;
     deviceCreateInfo.enabledExtensionCount = SDL_arraysize(deviceExtensionNames);
     deviceCreateInfo.ppEnabledExtensionNames = deviceExtensionNames;
+
+    deviceQueueCreateInfo[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    deviceQueueCreateInfo[0].queueFamilyIndex = vulkanContext->graphicsQueueFamilyIndex;
+    deviceQueueCreateInfo[0].queueCount = 1;
+    deviceQueueCreateInfo[0].pQueuePriorities = queuePriority;
+    ++deviceCreateInfo.queueCreateInfoCount;
+
+    if (vulkanContext->presentQueueFamilyIndex != vulkanContext->graphicsQueueFamilyIndex) {
+        deviceQueueCreateInfo[1].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        deviceQueueCreateInfo[1].queueFamilyIndex = vulkanContext->presentQueueFamilyIndex;
+        deviceQueueCreateInfo[1].queueCount = 1;
+        deviceQueueCreateInfo[1].pQueuePriorities = queuePriority;
+        ++deviceCreateInfo.queueCreateInfoCount;
+    }
+
     result = vkCreateDevice(vulkanContext->physicalDevice, &deviceCreateInfo, NULL, &vulkanContext->device);
     if (result != VK_SUCCESS) {
         vulkanContext->device = VK_NULL_HANDLE;
@@ -569,7 +557,6 @@ static void getSurfaceFormats(void)
         vulkanContext->surfaceFormats = (VkSurfaceFormatKHR *)SDL_malloc(sizeof(VkSurfaceFormatKHR) * vulkanContext->surfaceFormatsAllocatedCount);
         if (!vulkanContext->surfaceFormats) {
             vulkanContext->surfaceFormatsCount = 0;
-            SDL_OutOfMemory();
             quit(2);
         }
     }
@@ -602,7 +589,6 @@ static void getSwapchainImages(void)
     }
     vulkanContext->swapchainImages = SDL_malloc(sizeof(VkImage) * vulkanContext->swapchainImageCount);
     if (!vulkanContext->swapchainImages) {
-        SDL_OutOfMemory();
         quit(2);
     }
     result = vkGetSwapchainImagesKHR(vulkanContext->device,
@@ -626,6 +612,7 @@ static SDL_bool createSwapchain(void)
     int w, h;
     VkSwapchainCreateInfoKHR createInfo = { 0 };
     VkResult result;
+    SDL_WindowFlags flags;
 
     // pick an image count
     vulkanContext->swapchainDesiredImageCount = vulkanContext->surfaceCapabilities.minImageCount + 1;
@@ -651,10 +638,13 @@ static SDL_bool createSwapchain(void)
     }
 
     // get size
-    SDL_Vulkan_GetDrawableSize(vulkanContext->window, &w, &h);
+    SDL_GetWindowSizeInPixels(vulkanContext->window, &w, &h);
+
+    // get flags
+    flags = SDL_GetWindowFlags(vulkanContext->window);
 
     // Clamp the size to the allowable image extent.
-    // SDL_Vulkan_GetDrawableSize()'s result it not always in this range (bug #3287)
+    // SDL_GetWindowSizeInPixels()'s result it not always in this range (bug #3287)
     vulkanContext->swapchainSize.width = SDL_clamp((uint32_t)w,
                                                    vulkanContext->surfaceCapabilities.minImageExtent.width,
                                                    vulkanContext->surfaceCapabilities.maxImageExtent.width);
@@ -679,7 +669,11 @@ static SDL_bool createSwapchain(void)
     createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     createInfo.preTransform = vulkanContext->surfaceCapabilities.currentTransform;
-    createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    if (flags & SDL_WINDOW_TRANSPARENT) {
+        createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR;
+    } else {
+        createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    }
     createInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
     createInfo.clipped = VK_TRUE;
     createInfo.oldSwapchain = vulkanContext->swapchain;
@@ -774,7 +768,6 @@ static void createFences(void)
 
     vulkanContext->fences = SDL_malloc(sizeof(VkFence) * vulkanContext->swapchainImageCount);
     if (!vulkanContext->fences) {
-        SDL_OutOfMemory();
         quit(2);
     }
     for (i = 0; i < vulkanContext->swapchainImageCount; i++) {
@@ -929,7 +922,7 @@ static void initVulkan(void)
     SDL_Vulkan_LoadLibrary(NULL);
 
     vulkanContexts = (VulkanContext *)SDL_calloc(state->num_windows, sizeof(VulkanContext));
-    if (vulkanContexts == NULL) {
+    if (!vulkanContexts) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Out of memory!");
         quit(2);
     }
@@ -1037,9 +1030,9 @@ static SDL_bool render(void)
     }
     currentTime = (double)SDL_GetPerformanceCounter() / SDL_GetPerformanceFrequency();
     clearColor.float32[0] = (float)(0.5 + 0.5 * SDL_sin(currentTime));
-    clearColor.float32[1] = (float)(0.5 + 0.5 * SDL_sin(currentTime + M_PI * 2 / 3));
-    clearColor.float32[2] = (float)(0.5 + 0.5 * SDL_sin(currentTime + M_PI * 4 / 3));
-    clearColor.float32[3] = 1;
+    clearColor.float32[1] = (float)(0.5 + 0.5 * SDL_sin(currentTime + SDL_PI_D * 2 / 3));
+    clearColor.float32[2] = (float)(0.5 + 0.5 * SDL_sin(currentTime + SDL_PI_D * 4 / 3));
+    clearColor.float32[3] = 0.5; // for SDL_WINDOW_TRANSPARENT, ignored with VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
     rerecordCommandBuffer(frameIndex, &clearColor);
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.waitSemaphoreCount = 1;
@@ -1072,7 +1065,7 @@ static SDL_bool render(void)
                      getVulkanResultString(result));
         quit(2);
     }
-    SDL_Vulkan_GetDrawableSize(vulkanContext->window, &w, &h);
+    SDL_GetWindowSizeInPixels(vulkanContext->window, &w, &h);
     if (w != (int)vulkanContext->swapchainSize.width || h != (int)vulkanContext->swapchainSize.height) {
         return createNewSwapchainAndSwapchainSpecificStuff();
     }
@@ -1082,19 +1075,20 @@ static SDL_bool render(void)
 int main(int argc, char **argv)
 {
     int done;
-    SDL_DisplayMode mode;
+    const SDL_DisplayMode *mode;
     SDL_Event event;
-    Uint32 then, now, frames;
+    Uint64 then, now;
+    Uint32 frames;
     int dw, dh;
-
-    /* Enable standard application logging */
-    SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
 
     /* Initialize test framework */
     state = SDLTest_CommonCreateState(argv, SDL_INIT_VIDEO);
-    if (state == NULL) {
+    if (!state) {
         return 1;
     }
+
+    /* Enable standard application logging */
+    SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
 
     /* Set Vulkan parameters */
     state->window_flags |= SDL_WINDOW_VULKAN;
@@ -1105,11 +1099,13 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    SDL_GetCurrentDisplayMode(0, &mode);
-    SDL_Log("Screen BPP    : %" SDL_PRIu32 "\n", SDL_BITSPERPIXEL(mode.format));
+    mode = SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay());
+    if (mode) {
+        SDL_Log("Screen BPP    : %d\n", SDL_BITSPERPIXEL(mode->format));
+    }
     SDL_GetWindowSize(state->windows[0], &dw, &dh);
     SDL_Log("Window Size   : %d,%d\n", dw, dh);
-    SDL_Vulkan_GetDrawableSize(state->windows[0], &dw, &dh);
+    SDL_GetWindowSizeInPixels(state->windows[0], &dw, &dh);
     SDL_Log("Draw Size     : %d,%d\n", dw, dh);
     SDL_Log("\n");
 
@@ -1126,7 +1122,7 @@ int main(int argc, char **argv)
             /* Need to destroy the swapchain before the window created
              * by SDL.
              */
-            if (event.type == SDL_WINDOWEVENT_CLOSE) {
+            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
                 destroySwapchainAndSwapchainSpecificStuff(SDL_TRUE);
             }
             SDLTest_CommonEvent(state, &event, &done);

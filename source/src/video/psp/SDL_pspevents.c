@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,20 +18,18 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_PSP
+#ifdef SDL_VIDEO_DRIVER_PSP
 
 /* Being a null driver, there's no event stream. We just define stubs for
    most of the API. */
 
-#include "SDL.h"
 #include "../../events/SDL_events_c.h"
 #include "../../events/SDL_keyboard_c.h"
 #include "../SDL_sysvideo.h"
 #include "SDL_pspvideo.h"
 #include "SDL_pspevents_c.h"
-#include "SDL_keyboard.h"
 #include "../../thread/SDL_systhread.h"
 #include <psphprm.h>
 #include <pspthreadman.h>
@@ -47,7 +45,7 @@ static SDL_Keycode keymap[256];
 #endif
 
 static enum PspHprmKeys hprm = 0;
-static SDL_sem *event_sem = NULL;
+static SDL_Semaphore *event_sem = NULL;
 static SDL_Thread *thread = NULL;
 static int running = 0;
 static struct
@@ -66,25 +64,25 @@ static struct
 int EventUpdate(void *data)
 {
     while (running) {
-        SDL_SemWait(event_sem);
+        SDL_WaitSemaphore(event_sem);
         sceHprmPeekCurrentKey((u32 *)&hprm);
-        SDL_SemPost(event_sem);
+        SDL_PostSemaphore(event_sem);
         /* Delay 1/60th of a second */
         sceKernelDelayThread(1000000 / 60);
     }
     return 0;
 }
 
-void PSP_PumpEvents(_THIS)
+void PSP_PumpEvents(SDL_VideoDevice *_this)
 {
     int i;
     enum PspHprmKeys keys;
     enum PspHprmKeys changed;
     static enum PspHprmKeys old_keys = 0;
 
-    SDL_SemWait(event_sem);
+    SDL_WaitSemaphore(event_sem);
     keys = hprm;
-    SDL_SemPost(event_sem);
+    SDL_PostSemaphore(event_sem);
 
     /* HPRM Keyboard */
     changed = old_keys ^ keys;
@@ -92,7 +90,7 @@ void PSP_PumpEvents(_THIS)
     if (changed) {
         for (i = 0; i < sizeof(keymap_psp) / sizeof(keymap_psp[0]); i++) {
             if (changed & keymap_psp[i].id) {
-                SDL_SendKeyboardKey((keys & keymap_psp[i].id) ? SDL_PRESSED : SDL_RELEASED, SDL_GetScancodeFromKey(keymap_psp[i].sym));
+                SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, (keys & keymap_psp[i].id) ? SDL_PRESSED : SDL_RELEASED, SDL_GetScancodeFromKey(keymap_psp[i].sym));
             }
         }
     }
@@ -115,7 +113,7 @@ void PSP_PumpEvents(_THIS)
                     sym.sym = keymap[raw];
                     /* not tested */
                     /* SDL_PrivateKeyboard(pressed?SDL_PRESSED:SDL_RELEASED, &sym); */
-                    SDL_SendKeyboardKey((keys & keymap_psp[i].id) ? SDL_PRESSED : SDL_RELEASED, SDL_GetScancodeFromKey(keymap[raw]));
+                    SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, (keys & keymap_psp[i].id) ? SDL_PRESSED : SDL_RELEASED, SDL_GetScancodeFromKey(keymap[raw]));
                 }
             }
         }
@@ -126,11 +124,11 @@ void PSP_PumpEvents(_THIS)
     return;
 }
 
-void PSP_InitOSKeymap(_THIS)
+void PSP_InitOSKeymap(SDL_VideoDevice *_this)
 {
 #ifdef PSPIRKEYB
     int i;
-    for (i = 0; i < SDL_TABLESIZE(keymap); ++i) {
+    for (i = 0; i < SDL_arraysize(keymap); ++i) {
         keymap[i] = SDLK_UNKNOWN;
     }
 
@@ -237,7 +235,7 @@ void PSP_InitOSKeymap(_THIS)
 #endif
 }
 
-void PSP_EventInit(_THIS)
+int PSP_EventInit(SDL_VideoDevice *_this)
 {
 #ifdef PSPIRKEYB
     int outputmode = PSP_IRKBD_OUTPUT_MODE_SCANCODE;
@@ -251,17 +249,16 @@ void PSP_EventInit(_THIS)
 #endif
     /* Start thread to read data */
     if ((event_sem = SDL_CreateSemaphore(1)) == NULL) {
-        SDL_SetError("Can't create input semaphore");
-        return;
+        return SDL_SetError("Can't create input semaphore");
     }
     running = 1;
     if ((thread = SDL_CreateThreadInternal(EventUpdate, "PSPInputThread", 4096, NULL)) == NULL) {
-        SDL_SetError("Can't create input thread");
-        return;
+        return SDL_SetError("Can't create input thread");
     }
+    return 0;
 }
 
-void PSP_EventQuit(_THIS)
+void PSP_EventQuit(SDL_VideoDevice *_this)
 {
     running = 0;
     SDL_WaitThread(thread, NULL);
@@ -277,5 +274,3 @@ void PSP_EventQuit(_THIS)
 /* end of SDL_pspevents.c ... */
 
 #endif /* SDL_VIDEO_DRIVER_PSP */
-
-/* vi: set ts=4 sw=4 expandtab: */

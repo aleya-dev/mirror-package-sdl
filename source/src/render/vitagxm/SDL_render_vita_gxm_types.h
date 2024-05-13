@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -22,9 +22,8 @@
 #ifndef SDL_RENDER_VITA_GXM_TYPES_H
 #define SDL_RENDER_VITA_GXM_TYPES_H
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#include "SDL_hints.h"
 #include "../SDL_sysrender.h"
 
 #include <psp2/kernel/processmgr.h>
@@ -64,7 +63,7 @@ typedef struct color_vertex
 {
     float x;
     float y;
-    SDL_Color color;
+    SDL_FColor color;
 } color_vertex;
 
 typedef struct texture_vertex
@@ -73,7 +72,7 @@ typedef struct texture_vertex
     float y;
     float u;
     float v;
-    SDL_Color color;
+    SDL_FColor color;
 } texture_vertex;
 
 typedef struct gxm_texture
@@ -108,7 +107,7 @@ typedef struct
     SDL_bool viewport_dirty;
     SDL_Texture *texture;
     SDL_Texture *target;
-    SDL_Color color;
+    SDL_FColor color;
     SceGxmFragmentProgram *fragment_program;
     SceGxmVertexProgram *vertex_program;
     int last_command;
@@ -118,7 +117,6 @@ typedef struct
     SDL_bool cliprect_dirty;
     SDL_Rect cliprect;
     SDL_bool texturing;
-    SDL_Color clear_color;
     int drawablew;
     int drawableh;
 } gxm_drawstate_cache;
@@ -210,5 +208,3 @@ typedef struct
 } VITA_GXM_TextureData;
 
 #endif /* SDL_RENDER_VITA_GXM_TYPES_H */
-
-/* vi: set ts=4 sw=4 expandtab: */

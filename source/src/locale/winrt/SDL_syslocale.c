@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,22 +18,22 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
+#include "SDL_internal.h"
 
-#include <Windows.h>
+#include <windows.h>
 
-#include "../../SDL_internal.h"
 #include "../SDL_syslocale.h"
 
 /*using namespace Windows::Graphics::Display;*/
 #include <wchar.h>
 
-void SDL_SYS_GetPreferredLocales(char *buf, size_t buflen)
+int SDL_SYS_GetPreferredLocales(char *buf, size_t buflen)
 {
     WCHAR wbuffer[128] = L"";
     int ret = 0;
 
     /* !!! FIXME: do we not have GetUserPreferredUILanguages on WinPhone or UWP? */
-#if WINAPI_FAMILY == WINAPI_FAMILY_PHONE_APP
+#if SDL_WINAPI_FAMILY_PHONE
     ret = GetLocaleInfoEx(LOCALE_NAME_SYSTEM_DEFAULT, LOCALE_SNAME, wbuffer, SDL_arraysize(wbuffer));
 #else
     ret = GetSystemDefaultLocaleName(wbuffer, SDL_arraysize(wbuffer));
@@ -50,6 +50,5 @@ void SDL_SYS_GetPreferredLocales(char *buf, size_t buflen)
             buf[i] = (char)wbuffer[i]; /* assume this was ASCII anyhow. */
         }
     }
+    return 0;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

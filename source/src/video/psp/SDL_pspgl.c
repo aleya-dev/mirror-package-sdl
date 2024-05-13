@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,14 +18,13 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_PSP
+#ifdef SDL_VIDEO_DRIVER_PSP
 
 #include <stdlib.h>
 #include <string.h>
 
-#include "SDL_error.h"
 #include "SDL_pspvideo.h"
 #include "SDL_pspgl_c.h"
 
@@ -44,7 +43,7 @@
         }                                      \
     } while (0)
 
-int PSP_GL_LoadLibrary(_THIS, const char *path)
+int PSP_GL_LoadLibrary(SDL_VideoDevice *_this, const char *path)
 {
     return 0;
 }
@@ -55,12 +54,12 @@ int PSP_GL_LoadLibrary(_THIS, const char *path)
 GLSTUB(glOrtho,(GLdouble left, GLdouble right, GLdouble bottom, GLdouble top,
                     GLdouble zNear, GLdouble zFar))
 */
-void *PSP_GL_GetProcAddress(_THIS, const char *proc)
+SDL_FunctionPointer PSP_GL_GetProcAddress(SDL_VideoDevice *_this, const char *proc)
 {
     return eglGetProcAddress(proc);
 }
 
-void PSP_GL_UnloadLibrary(_THIS)
+void PSP_GL_UnloadLibrary(SDL_VideoDevice *_this)
 {
     eglTerminate(_this->gl_data->display);
 }
@@ -68,10 +67,10 @@ void PSP_GL_UnloadLibrary(_THIS)
 static EGLint width = 480;
 static EGLint height = 272;
 
-SDL_GLContext PSP_GL_CreateContext(_THIS, SDL_Window *window)
+SDL_GLContext PSP_GL_CreateContext(SDL_VideoDevice *_this, SDL_Window *window)
 {
 
-    SDL_WindowData *wdata = (SDL_WindowData *)window->driverdata;
+    SDL_WindowData *wdata = window->driverdata;
 
     EGLint attribs[32];
     EGLDisplay display;
@@ -130,7 +129,7 @@ SDL_GLContext PSP_GL_CreateContext(_THIS, SDL_Window *window)
     return context;
 }
 
-int PSP_GL_MakeCurrent(_THIS, SDL_Window *window, SDL_GLContext context)
+int PSP_GL_MakeCurrent(SDL_VideoDevice *_this, SDL_Window *window, SDL_GLContext context)
 {
     if (!eglMakeCurrent(_this->gl_data->display, _this->gl_data->surface,
                         _this->gl_data->surface, _this->gl_data->context)) {
@@ -139,7 +138,7 @@ int PSP_GL_MakeCurrent(_THIS, SDL_Window *window, SDL_GLContext context)
     return 0;
 }
 
-int PSP_GL_SetSwapInterval(_THIS, int interval)
+int PSP_GL_SetSwapInterval(SDL_VideoDevice *_this, int interval)
 {
     EGLBoolean status;
     status = eglSwapInterval(_this->gl_data->display, interval);
@@ -152,12 +151,13 @@ int PSP_GL_SetSwapInterval(_THIS, int interval)
     return SDL_SetError("Unable to set the EGL swap interval");
 }
 
-int PSP_GL_GetSwapInterval(_THIS)
+int PSP_GL_GetSwapInterval(SDL_VideoDevice *_this, int *interval)
 {
-    return _this->gl_data->swapinterval;
+    *interval = _this->gl_data->swapinterval;
+    return 0;
 }
 
-int PSP_GL_SwapWindow(_THIS, SDL_Window *window)
+int PSP_GL_SwapWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
     if (!eglSwapBuffers(_this->gl_data->display, _this->gl_data->surface)) {
         return SDL_SetError("eglSwapBuffers() failed");
@@ -165,14 +165,13 @@ int PSP_GL_SwapWindow(_THIS, SDL_Window *window)
     return 0;
 }
 
-void PSP_GL_DeleteContext(_THIS, SDL_GLContext context)
+int PSP_GL_DeleteContext(SDL_VideoDevice *_this, SDL_GLContext context)
 {
-    SDL_VideoData *phdata = (SDL_VideoData *)_this->driverdata;
+    SDL_VideoData *phdata = _this->driverdata;
     EGLBoolean status;
 
     if (phdata->egl_initialized != SDL_TRUE) {
-        SDL_SetError("PSP: GLES initialization failed, no OpenGL ES support");
-        return;
+        return SDL_SetError("PSP: GLES initialization failed, no OpenGL ES support");
     }
 
     /* Check if OpenGL ES connection has been initialized */
@@ -181,15 +180,11 @@ void PSP_GL_DeleteContext(_THIS, SDL_GLContext context)
             status = eglDestroyContext(_this->gl_data->display, context);
             if (status != EGL_TRUE) {
                 /* Error during OpenGL ES context destroying */
-                SDL_SetError("PSP: OpenGL ES context destroy error");
-                return;
+                return SDL_SetError("PSP: OpenGL ES context destroy error");
             }
         }
     }
-
-    return;
+    return 0;
 }
 
 #endif /* SDL_VIDEO_DRIVER_PSP */
-
-/* vi: set ts=4 sw=4 expandtab: */

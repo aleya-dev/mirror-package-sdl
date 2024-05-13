@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -24,21 +24,19 @@
  * SDL_x11vulkan.c.
  */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#if SDL_VIDEO_VULKAN && SDL_VIDEO_DRIVER_UIKIT
+#if defined(SDL_VIDEO_VULKAN) && defined(SDL_VIDEO_DRIVER_UIKIT)
 
 #include "SDL_uikitvideo.h"
 #include "SDL_uikitwindow.h"
 
-#include "SDL_loadso.h"
 #include "SDL_uikitvulkan.h"
 #include "SDL_uikitmetalview.h"
-#include "SDL_syswm.h"
 
 #include <dlfcn.h>
 
-const char* defaultPaths[] = {
+const char *defaultPaths[] = {
     "libvulkan.dylib",
 };
 
@@ -46,7 +44,7 @@ const char* defaultPaths[] = {
  * proofing. */
 #define DEFAULT_HANDLE RTLD_DEFAULT
 
-int UIKit_Vulkan_LoadLibrary(_THIS, const char *path)
+int UIKit_Vulkan_LoadLibrary(SDL_VideoDevice *_this, const char *path)
 {
     VkExtensionProperties *extensions = NULL;
     Uint32 extensionCount = 0;
@@ -67,14 +65,14 @@ int UIKit_Vulkan_LoadLibrary(_THIS, const char *path)
     if (!path) {
         /* Handle the case where Vulkan Portability is linked statically. */
         vkGetInstanceProcAddr =
-        (PFN_vkGetInstanceProcAddr)dlsym(DEFAULT_HANDLE,
-                                         "vkGetInstanceProcAddr");
+            (PFN_vkGetInstanceProcAddr)dlsym(DEFAULT_HANDLE,
+                                             "vkGetInstanceProcAddr");
     }
 
     if (vkGetInstanceProcAddr) {
         _this->vulkan_config.loader_handle = DEFAULT_HANDLE;
     } else {
-        const char** paths;
+        const char **paths;
         const char *foundPath = NULL;
         int numPaths;
         int i;
@@ -101,15 +99,15 @@ int UIKit_Vulkan_LoadLibrary(_THIS, const char *path)
                     SDL_arraysize(_this->vulkan_config.loader_path));
         vkGetInstanceProcAddr =
             (PFN_vkGetInstanceProcAddr)SDL_LoadFunction(
-                                    _this->vulkan_config.loader_handle,
-                                    "vkGetInstanceProcAddr");
+                _this->vulkan_config.loader_handle,
+                "vkGetInstanceProcAddr");
     }
 
     if (!vkGetInstanceProcAddr) {
         SDL_SetError("Failed to find %s in either executable or %s: %s",
                      "vkGetInstanceProcAddr",
                      "linked Vulkan Portability library",
-                     (const char *) dlerror());
+                     (const char *)dlerror());
         goto fail;
     }
 
@@ -145,13 +143,10 @@ int UIKit_Vulkan_LoadLibrary(_THIS, const char *path)
     SDL_free(extensions);
 
     if (!hasSurfaceExtension) {
-        SDL_SetError("Installed Vulkan Portability doesn't implement the "
-                     VK_KHR_SURFACE_EXTENSION_NAME " extension");
+        SDL_SetError("Installed Vulkan Portability doesn't implement the " VK_KHR_SURFACE_EXTENSION_NAME " extension");
         goto fail;
     } else if (!hasMetalSurfaceExtension && !hasIOSSurfaceExtension) {
-        SDL_SetError("Installed Vulkan Portability doesn't implement the "
-                     VK_EXT_METAL_SURFACE_EXTENSION_NAME " or "
-                     VK_MVK_IOS_SURFACE_EXTENSION_NAME " extensions");
+        SDL_SetError("Installed Vulkan Portability doesn't implement the " VK_EXT_METAL_SURFACE_EXTENSION_NAME " or " VK_MVK_IOS_SURFACE_EXTENSION_NAME " extensions");
         goto fail;
     }
 
@@ -162,7 +157,7 @@ fail:
     return -1;
 }
 
-void UIKit_Vulkan_UnloadLibrary(_THIS)
+void UIKit_Vulkan_UnloadLibrary(SDL_VideoDevice *_this)
 {
     if (_this->vulkan_config.loader_handle) {
         if (_this->vulkan_config.loader_handle != DEFAULT_HANDLE) {
@@ -172,39 +167,34 @@ void UIKit_Vulkan_UnloadLibrary(_THIS)
     }
 }
 
-SDL_bool UIKit_Vulkan_GetInstanceExtensions(_THIS,
-                                          SDL_Window *window,
-                                          unsigned *count,
-                                          const char **names)
+char const* const* UIKit_Vulkan_GetInstanceExtensions(SDL_VideoDevice *_this,
+                                            Uint32 *count)
 {
     static const char *const extensionsForUIKit[] = {
         VK_KHR_SURFACE_EXTENSION_NAME, VK_EXT_METAL_SURFACE_EXTENSION_NAME
     };
-    if (!_this->vulkan_config.loader_handle) {
-        SDL_SetError("Vulkan is not loaded");
-        return SDL_FALSE;
+    if(count) {
+        *count = SDL_arraysize(extensionsForUIKit);
     }
-
-    return SDL_Vulkan_GetInstanceExtensions_Helper(
-            count, names, SDL_arraysize(extensionsForUIKit),
-            extensionsForUIKit);
+    return extensionsForUIKit;
 }
 
-SDL_bool UIKit_Vulkan_CreateSurface(_THIS,
-                                  SDL_Window *window,
-                                  VkInstance instance,
-                                  VkSurfaceKHR *surface)
+SDL_bool UIKit_Vulkan_CreateSurface(SDL_VideoDevice *_this,
+                                    SDL_Window *window,
+                                    VkInstance instance,
+                                    const struct VkAllocationCallbacks *allocator,
+                                    VkSurfaceKHR *surface)
 {
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr =
         (PFN_vkGetInstanceProcAddr)_this->vulkan_config.vkGetInstanceProcAddr;
     PFN_vkCreateMetalSurfaceEXT vkCreateMetalSurfaceEXT =
         (PFN_vkCreateMetalSurfaceEXT)vkGetInstanceProcAddr(
-                                            (VkInstance)instance,
-                                            "vkCreateMetalSurfaceEXT");
+            (VkInstance)instance,
+            "vkCreateMetalSurfaceEXT");
     PFN_vkCreateIOSSurfaceMVK vkCreateIOSSurfaceMVK =
         (PFN_vkCreateIOSSurfaceMVK)vkGetInstanceProcAddr(
-                                            (VkInstance)instance,
-                                            "vkCreateIOSSurfaceMVK");
+            (VkInstance)instance,
+            "vkCreateIOSSurfaceMVK");
     VkResult result;
     SDL_MetalView metalview;
 
@@ -214,9 +204,8 @@ SDL_bool UIKit_Vulkan_CreateSurface(_THIS,
     }
 
     if (!vkCreateMetalSurfaceEXT && !vkCreateIOSSurfaceMVK) {
-        SDL_SetError(VK_EXT_METAL_SURFACE_EXTENSION_NAME " or "
-                     VK_MVK_IOS_SURFACE_EXTENSION_NAME
-                     " extensions are not enabled in the Vulkan instance.");
+        SDL_SetError(VK_EXT_METAL_SURFACE_EXTENSION_NAME " or " VK_MVK_IOS_SURFACE_EXTENSION_NAME
+                                                         " extensions are not enabled in the Vulkan instance.");
         return SDL_FALSE;
     }
 
@@ -231,8 +220,8 @@ SDL_bool UIKit_Vulkan_CreateSurface(_THIS,
         createInfo.pNext = NULL;
         createInfo.flags = 0;
         createInfo.pLayer = (__bridge const CAMetalLayer *)
-                            UIKit_Metal_GetLayer(_this, metalview);
-        result = vkCreateMetalSurfaceEXT(instance, &createInfo, NULL, surface);
+            UIKit_Metal_GetLayer(_this, metalview);
+        result = vkCreateMetalSurfaceEXT(instance, &createInfo, allocator, surface);
         if (result != VK_SUCCESS) {
             UIKit_Metal_DestroyView(_this, metalview);
             SDL_SetError("vkCreateMetalSurfaceEXT failed: %s",
@@ -246,7 +235,7 @@ SDL_bool UIKit_Vulkan_CreateSurface(_THIS,
         createInfo.flags = 0;
         createInfo.pView = (const void *)metalview;
         result = vkCreateIOSSurfaceMVK(instance, &createInfo,
-                                           NULL, surface);
+                                       allocator, surface);
         if (result != VK_SUCCESS) {
             UIKit_Metal_DestroyView(_this, metalview);
             SDL_SetError("vkCreateIOSSurfaceMVK failed: %s",
@@ -265,11 +254,4 @@ SDL_bool UIKit_Vulkan_CreateSurface(_THIS,
     return SDL_TRUE;
 }
 
-void UIKit_Vulkan_GetDrawableSize(_THIS, SDL_Window *window, int *w, int *h)
-{
-    UIKit_Metal_GetDrawableSize(_this, window, w, h);
-}
-
 #endif
-
-/* vi: set ts=4 sw=4 expandtab: */

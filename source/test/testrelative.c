@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -12,40 +12,43 @@
 
 /* Simple program:  Test relative mouse motion */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <time.h>
+#include <SDL3/SDL_test_common.h>
+#include <SDL3/SDL_main.h>
 
-#include "SDL_test_common.h"
-
-#ifdef __EMSCRIPTEN__
+#ifdef SDL_PLATFORM_EMSCRIPTEN
 #include <emscripten/emscripten.h>
 #endif
 
-static SDLTest_CommonState *state;
-int i, done;
-SDL_Rect rect;
-SDL_Event event;
+#include <stdlib.h>
+#include <time.h>
 
-static void
-DrawRects(SDL_Renderer *renderer)
+static SDLTest_CommonState *state;
+static int i, done;
+static float mouseX, mouseY;
+static SDL_FRect rect;
+static SDL_Event event;
+
+static void DrawRects(SDL_Renderer *renderer)
 {
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    rect.x = mouseX;
+    rect.y = mouseY;
     SDL_RenderFillRect(renderer, &rect);
 }
 
-static void
-loop()
+static void loop(void)
 {
     /* Check for events */
     while (SDL_PollEvent(&event)) {
         SDLTest_CommonEvent(state, &event, &done);
         switch (event.type) {
-        case SDL_MOUSEMOTION:
+        case SDL_EVENT_MOUSE_MOTION:
         {
-            rect.x += event.motion.xrel;
-            rect.y += event.motion.yrel;
+            mouseX += event.motion.xrel;
+            mouseY += event.motion.yrel;
         } break;
+        default:
+            break;
         }
     }
     for (i = 0; i < state->num_windows; ++i) {
@@ -58,7 +61,7 @@ loop()
         SDL_RenderClear(renderer);
 
         /* Wrap the cursor rectangle at the screen edges to keep it visible */
-        SDL_RenderGetViewport(renderer, &viewport);
+        SDL_GetRenderViewport(renderer, &viewport);
         if (rect.x < viewport.x) {
             rect.x += viewport.w;
         }
@@ -76,7 +79,7 @@ loop()
 
         SDL_RenderPresent(renderer);
     }
-#ifdef __EMSCRIPTEN__
+#ifdef SDL_PLATFORM_EMSCRIPTEN
     if (done) {
         emscripten_cancel_main_loop();
     }
@@ -91,12 +94,15 @@ int main(int argc, char *argv[])
 
     /* Initialize test framework */
     state = SDLTest_CommonCreateState(argv, SDL_INIT_VIDEO);
-    if (state == NULL) {
+    if (!state) {
         return 1;
     }
-    for (i = 1; i < argc; ++i) {
-        SDLTest_CommonArg(state, i);
+
+    /* Parse commandline */
+    if (!SDLTest_CommonDefaultArgs(state, argc, argv)) {
+        return 1;
     }
+
     if (!SDLTest_CommonInit(state)) {
         return 2;
     }
@@ -120,7 +126,7 @@ int main(int argc, char *argv[])
     rect.h = 10;
     /* Main render loop */
     done = 0;
-#ifdef __EMSCRIPTEN__
+#ifdef SDL_PLATFORM_EMSCRIPTEN
     emscripten_set_main_loop(loop, 0, 1);
 #else
     while (!done) {
@@ -130,5 +136,3 @@ int main(int argc, char *argv[])
     SDLTest_CommonQuit(state);
     return 0;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

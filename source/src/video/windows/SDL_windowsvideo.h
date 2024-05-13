@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,7 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_windowsvideo_h_
 #define SDL_windowsvideo_h_
@@ -27,7 +27,7 @@
 
 #include "../SDL_sysvideo.h"
 
-#if defined(_MSC_VER) && (_MSC_VER >= 1500) && !defined(__XBOXONE__) && !defined(__XBOXSERIES__)
+#if defined(_MSC_VER) && (_MSC_VER >= 1500) && !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
 #include <msctf.h>
 #else
 #include "SDL_msctf.h"
@@ -43,7 +43,8 @@
 #include "SDL_windowsevents.h"
 #include "SDL_windowsopengl.h"
 
-#if !defined(__XBOXONE__) && !defined(__XBOXSERIES__)
+#if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
+#include "SDL_windowsshape.h"
 #include "SDL_windowskeyboard.h"
 #include "SDL_windowsmodes.h"
 #include "SDL_windowsmouse.h"
@@ -51,8 +52,10 @@
 #endif
 
 #include "SDL_windowswindow.h"
-#include "SDL_events.h"
-#include "SDL_loadso.h"
+
+#ifndef USER_DEFAULT_SCREEN_DPI
+#define USER_DEFAULT_SCREEN_DPI 96
+#endif
 
 #if WINVER < 0x0601
 /* Touch input definitions */
@@ -366,13 +369,13 @@ typedef struct tagINPUTCONTEXT2
 
 /* Private display data */
 
-typedef struct SDL_VideoData
+struct SDL_VideoData
 {
     int render;
 
     DWORD clipboard_count;
 
-#if !defined(__XBOXONE__) && !defined(__XBOXSERIES__) /* Xbox doesn't support user32/shcore*/
+#if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES) /* Xbox doesn't support user32/shcore*/
     /* Touch input functions */
     void *userDLL;
     /* *INDENT-OFF* */ /* clang-format off */
@@ -399,10 +402,20 @@ typedef struct SDL_VideoData
                                         UINT             *dpiY );
     HRESULT (WINAPI *SetProcessDpiAwareness)(PROCESS_DPI_AWARENESS dpiAwareness);
     /* *INDENT-ON* */ /* clang-format on */
-#endif                /*!defined(__XBOXONE__) && !defined(__XBOXSERIES__)*/
+#endif                /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
 
-    SDL_bool dpi_scaling_enabled;
     SDL_bool cleared;
+
+    BYTE *rawinput;
+    UINT rawinput_offset;
+    UINT rawinput_size;
+    UINT rawinput_count;
+    Uint64 last_rawinput_poll;
+    SDL_Point last_raw_mouse_position;
+    SDL_bool raw_mouse_enabled;
+    SDL_bool raw_keyboard_enabled;
+    SDL_bool pending_E1_key_sequence;
+    SDL_bool raw_input_enabled;
 
 #ifndef SDL_DISABLE_WINDOWS_IME
     SDL_bool ime_com_initialized;
@@ -459,7 +472,7 @@ typedef struct SDL_VideoData
 
     BYTE pre_hook_key_state[256];
     UINT _SDL_WAKEUP;
-} SDL_VideoData;
+};
 
 extern SDL_bool g_WindowsEnableMessageLoop;
 extern SDL_bool g_WindowsEnableMenuMnemonics;
@@ -468,8 +481,7 @@ extern SDL_bool g_WindowFrameUsableWhileCursorHidden;
 typedef struct IDirect3D9 IDirect3D9;
 extern SDL_bool D3D_LoadDLL(void **pD3DDLL, IDirect3D9 **pDirect3D9Interface);
 
-extern SDL_bool WIN_IsPerMonitorV2DPIAware(_THIS);
+extern SDL_SystemTheme WIN_GetSystemTheme(void);
+extern SDL_bool WIN_IsPerMonitorV2DPIAware(SDL_VideoDevice *_this);
 
 #endif /* SDL_windowsvideo_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

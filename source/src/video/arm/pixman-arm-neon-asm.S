@@ -79,7 +79,7 @@
  * as NOP to workaround some HW bugs or for whatever other reason)
  *
  * PREFETCH_TYPE_SIMPLE (may be useful for simple single-issue ARM cores where
- * advanced prefetch intruduces heavy overhead)
+ * advanced prefetch introduces heavy overhead)
  *
  * PREFETCH_TYPE_ADVANCED (useful for superscalar cores such as ARM Cortex-A8
  * which can run ARM and NEON instructions simultaneously so that extra ARM
@@ -217,9 +217,9 @@ pixman_asm_function name
 .endfunc
 .endm
 
-generate_fillrect_function FillRect32ARMNEONAsm, 32, 2
-generate_fillrect_function FillRect16ARMNEONAsm, 16, 1
-generate_fillrect_function FillRect8ARMNEONAsm,  8,  0
+generate_fillrect_function FillSurfaceRect32ARMNEONAsm, 32, 2
+generate_fillrect_function FillSurfaceRect16ARMNEONAsm, 16, 1
+generate_fillrect_function FillSurfaceRect8ARMNEONAsm,  8,  0
 
 /******************************************************************************/
 

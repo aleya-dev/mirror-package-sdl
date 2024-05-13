@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -15,16 +15,12 @@
 /* loopwaves.c is much more robust in handling WAVE files --
     This is only for simple WAVEs
 */
-#include "SDL_config.h"
-
-#include <stdio.h>
 #include <stdlib.h>
 
-#ifdef __EMSCRIPTEN__
-#include <emscripten/emscripten.h>
-#endif
-
-#include "SDL.h"
+#define SDL_MAIN_USE_CALLBACKS 1
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+#include <SDL3/SDL_test.h>
 #include "testutils.h"
 
 static struct
@@ -32,113 +28,78 @@ static struct
     SDL_AudioSpec spec;
     Uint8 *sound;    /* Pointer to wave data */
     Uint32 soundlen; /* Length of wave data */
-    int soundpos;    /* Current play position */
 } wave;
 
-static SDL_AudioDeviceID device;
+static SDL_AudioStream *stream;
+static SDLTest_CommonState *state;
 
-/* Call this instead of exit(), so we can clean up SDL: atexit() is evil. */
-static void
-quit(int rc)
+static int fillerup(void)
 {
-    SDL_Quit();
-    exit(rc);
-}
-
-static void
-close_audio()
-{
-    if (device != 0) {
-        SDL_CloseAudioDevice(device);
-        device = 0;
+    const int minimum = (wave.soundlen / SDL_AUDIO_FRAMESIZE(wave.spec)) / 2;
+    if (SDL_GetAudioStreamQueued(stream) < minimum) {
+        SDL_PutAudioStreamData(stream, wave.sound, wave.soundlen);
     }
+    return 0;
 }
 
-static void
-open_audio()
-{
-    /* Initialize fillerup() variables */
-    device = SDL_OpenAudioDevice(NULL, SDL_FALSE, &wave.spec, NULL, 0);
-    if (!device) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't open audio: %s\n", SDL_GetError());
-        SDL_FreeWAV(wave.sound);
-        quit(2);
-    }
-
-    /* Let the audio run */
-    SDL_PauseAudioDevice(device, SDL_FALSE);
-}
-
-#ifndef __EMSCRIPTEN__
-static void reopen_audio()
-{
-    close_audio();
-    open_audio();
-}
-#endif
-
-void SDLCALL
-fillerup(void *unused, Uint8 *stream, int len)
-{
-    Uint8 *waveptr;
-    int waveleft;
-
-    /* Set up the pointers */
-    waveptr = wave.sound + wave.soundpos;
-    waveleft = wave.soundlen - wave.soundpos;
-
-    /* Go! */
-    while (waveleft <= len) {
-        SDL_memcpy(stream, waveptr, waveleft);
-        stream += waveleft;
-        len -= waveleft;
-        waveptr = wave.sound;
-        waveleft = wave.soundlen;
-        wave.soundpos = 0;
-    }
-    SDL_memcpy(stream, waveptr, len);
-    wave.soundpos += len;
-}
-
-static int done = 0;
-
-#ifdef __EMSCRIPTEN__
-void loop()
-{
-    if (done || (SDL_GetAudioDeviceStatus(device) != SDL_AUDIO_PLAYING)) {
-        emscripten_cancel_main_loop();
-    }
-}
-#endif
-
-int main(int argc, char *argv[])
+int SDL_AppInit(void **appstate, int argc, char *argv[])
 {
     int i;
     char *filename = NULL;
 
+    /* this doesn't have to run very much, so give up tons of CPU time between iterations. */
+    SDL_SetHint(SDL_HINT_MAIN_CALLBACK_RATE, "5");
+
+    /* Initialize test framework */
+    state = SDLTest_CommonCreateState(argv, 0);
+    if (!state) {
+        return 1;
+    }
+
     /* Enable standard application logging */
     SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
+
+    /* Parse commandline */
+    for (i = 1; i < argc;) {
+        int consumed;
+
+        consumed = SDLTest_CommonArg(state, i);
+        if (!consumed) {
+            if (!filename) {
+                filename = argv[i];
+                consumed = 1;
+            }
+        }
+        if (consumed <= 0) {
+            static const char *options[] = { "[sample.wav]", NULL };
+            SDLTest_CommonLogUsage(state, argv[0], options);
+            exit(1);
+        }
+
+        i += consumed;
+    }
 
     /* Load the SDL library */
     if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_EVENTS) < 0) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't initialize SDL: %s\n", SDL_GetError());
-        return 1;
+        return -1;
     }
 
-    filename = GetResourceFilename(argc > 1 ? argv[1] : NULL, "sample.wav");
+    filename = GetResourceFilename(filename, "sample.wav");
 
-    if (filename == NULL) {
+    if (!filename) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s\n", SDL_GetError());
-        quit(1);
+        return -1;
     }
 
     /* Load the wave file into memory */
-    if (SDL_LoadWAV(filename, &wave.spec, &wave.sound, &wave.soundlen) == NULL) {
+    if (SDL_LoadWAV(filename, &wave.spec, &wave.sound, &wave.soundlen) == -1) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't load %s: %s\n", filename, SDL_GetError());
-        quit(1);
+        SDL_free(filename);
+        return -1;
     }
 
-    wave.spec.callback = fillerup;
+    SDL_free(filename);
 
     /* Show the list of available drivers */
     SDL_Log("Available audio drivers:");
@@ -148,35 +109,30 @@ int main(int argc, char *argv[])
 
     SDL_Log("Using audio driver: %s\n", SDL_GetCurrentAudioDriver());
 
-    open_audio();
-
-    SDL_FlushEvents(SDL_AUDIODEVICEADDED, SDL_AUDIODEVICEREMOVED);
-
-#ifdef __EMSCRIPTEN__
-    emscripten_set_main_loop(loop, 0, 1);
-#else
-    while (!done) {
-        SDL_Event event;
-
-        while (SDL_PollEvent(&event) > 0) {
-            if (event.type == SDL_QUIT) {
-                done = 1;
-            }
-            if ((event.type == SDL_AUDIODEVICEADDED && !event.adevice.iscapture) ||
-                (event.type == SDL_AUDIODEVICEREMOVED && !event.adevice.iscapture && event.adevice.which == device)) {
-                reopen_audio();
-            }
-        }
-        SDL_Delay(100);
+    stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_OUTPUT, &wave.spec, NULL, NULL);
+    if (!stream) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create audio stream: %s\n", SDL_GetError());
+        return -1;
     }
-#endif
+    SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(stream));
 
-    /* Clean up on signal */
-    close_audio();
-    SDL_FreeWAV(wave.sound);
-    SDL_free(filename);
-    SDL_Quit();
     return 0;
 }
 
-/* vi: set ts=4 sw=4 expandtab: */
+int SDL_AppEvent(void *appstate, const SDL_Event *event)
+{
+    return (event->type == SDL_EVENT_QUIT) ? 1 : 0;
+}
+
+int SDL_AppIterate(void *appstate)
+{
+    return fillerup();
+}
+
+void SDL_AppQuit(void *appstate)
+{
+    SDL_DestroyAudioStream(stream);
+    SDL_free(wave.sound);
+    SDLTest_CommonDestroyState(state);
+}
+

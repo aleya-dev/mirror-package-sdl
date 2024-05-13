@@ -7,171 +7,198 @@
     <Filter Include="Source Files">
       <UniqueIdentifier>{68e1b30b-19ed-4612-93e4-6260c5a979e5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="main">
+      <UniqueIdentifier>{00004a2523fc69c7128c60648c860000}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="main\generic">
+      <UniqueIdentifier>{0000318d975e0a2867ab1d5727bf0000}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="camera">
+      <UniqueIdentifier>{00009e5236c2ac679fe0bc30beb90000}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="camera\dummy">
+      <UniqueIdentifier>{000031d805439b865ff4550d2f620000}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="filesystem">
+      <UniqueIdentifier>{00004389761f0ae646deb5a3d65f0000}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="filesystem\windows">
+      <UniqueIdentifier>{0000bc587ef6c558d75ce2e620cb0000}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="time">
+      <UniqueIdentifier>{0000948771d0040a6a55997a7f1e0000}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="time\windows">
+      <UniqueIdentifier>{0000012051ca8361c8e1013aee1d0000}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dialog">
+      <UniqueIdentifier>{0000c99bfadbbcb05a474a8472910000}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\include\begin_code.h">
+    <ClInclude Include="..\include\SDL3\SDL_begin_code.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\close_code.h">
+    <ClInclude Include="..\include\SDL3\SDL_camera.h">
+      <Filter>API Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\SDL3\SDL_close_code.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL.h">
+    <ClInclude Include="..\include\SDL3\SDL.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_assert.h">
+    <ClInclude Include="..\include\SDL3\SDL_assert.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_atomic.h">
+    <ClInclude Include="..\include\SDL3\SDL_atomic.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_audio.h">
+    <ClInclude Include="..\include\SDL3\SDL_audio.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_blendmode.h">
+    <ClInclude Include="..\include\SDL3\SDL_blendmode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_clipboard.h">
+    <ClInclude Include="..\include\SDL3\SDL_clipboard.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_config.h">
+    <ClInclude Include="..\include\SDL3\SDL_copying.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_config_minimal.h">
+    <ClInclude Include="..\include\SDL3\SDL_cpuinfo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_config_winrt.h">
+    <ClInclude Include="..\include\SDL3\SDL_egl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_copying.h">
+    <ClInclude Include="..\include\SDL3\SDL_endian.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_cpuinfo.h">
+    <ClInclude Include="..\include\SDL3\SDL_error.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_egl.h">
+    <ClInclude Include="..\include\SDL3\SDL_events.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_endian.h">
+    <ClInclude Include="..\include\SDL3\SDL_filesystem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_error.h">
+    <ClInclude Include="..\include\SDL3\SDL_guid.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_events.h">
+    <ClInclude Include="..\include\SDL3\SDL_haptic.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_filesystem.h">
+    <ClInclude Include="..\include\SDL3\SDL_hints.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_guid.h">
+    <ClInclude Include="..\include\SDL3\SDL_hidapi.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_haptic.h">
+    <ClInclude Include="..\include\SDL3\SDL_input.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_hints.h">
+    <ClInclude Include="..\include\SDL3\SDL_joystick.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_hidapi.h">
+    <ClInclude Include="..\include\SDL3\SDL_keyboard.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_input.h">
+    <ClInclude Include="..\include\SDL3\SDL_keycode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_joystick.h">
+    <ClInclude Include="..\include\SDL3\SDL_loadso.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_keyboard.h">
+    <ClInclude Include="..\include\SDL3\SDL_locale.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_keycode.h">
+    <ClInclude Include="..\include\SDL3\SDL_log.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_loadso.h">
+    <ClInclude Include="..\include\SDL3\SDL_main.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_locale.h">
+    <ClInclude Include="..\include\SDL3\SDL_mouse.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_log.h">
+    <ClInclude Include="..\include\SDL3\SDL_mutex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_main.h">
+    <ClInclude Include="..\include\SDL3\SDL_opengles2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_mouse.h">
+    <ClInclude Include="..\include\SDL3\SDL_pen.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_mutex.h">
+    <ClInclude Include="..\include\SDL3\SDL_pixels.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_name.h">
+    <ClInclude Include="..\include\SDL3\SDL_platform.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_opengles2.h">
+    <ClInclude Include="..\include\SDL3\SDL_platform_defines.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_pixels.h">
+    <ClInclude Include="..\include\SDL3\SDL_power.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_platform.h">
+    <ClInclude Include="..\include\SDL3\SDL_rect.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_power.h">
+    <ClInclude Include="..\include\SDL3\SDL_render.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_quit.h">
+    <ClInclude Include="..\include\SDL3\SDL_revision.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_rect.h">
+    <ClInclude Include="..\include\SDL3\SDL_iostream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_render.h">
+    <ClInclude Include="..\include\SDL3\SDL_scancode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_revision.h">
+    <ClInclude Include="..\include\SDL3\SDL_stdinc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_rwops.h">
+    <ClInclude Include="..\include\SDL3\SDL_surface.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_scancode.h">
+    <ClInclude Include="..\include\SDL3\SDL_system.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_shape.h">
+    <ClInclude Include="..\include\SDL3\SDL_thread.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_stdinc.h">
+    <ClInclude Include="..\include\SDL3\SDL_timer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_surface.h">
+    <ClInclude Include="..\include\SDL3\SDL_touch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_system.h">
+    <ClInclude Include="..\include\SDL3\SDL_types.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_syswm.h">
+    <ClInclude Include="..\include\SDL3\SDL_version.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_thread.h">
+    <ClInclude Include="..\include\SDL3\SDL_video.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_timer.h">
+    <ClInclude Include="..\src\camera\SDL_camera_c.h">
+      <Filter>camera</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\camera\SDL_syscamera.h">
+      <Filter>camera</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\filesystem\SDL_sysfilesystem.h">
+      <Filter>filesystem</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\joystick\SDL_gamepad_c.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_touch.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\SDL_types.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\SDL_version.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\SDL_video.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\joystick\SDL_gamecontrollerdb.h">
+    <ClInclude Include="..\src\joystick\SDL_gamepad_db.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\audio\disk\SDL_diskaudio.h">
@@ -187,6 +214,12 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\audio\SDL_sysaudio.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\audio\SDL_audioqueue.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\audio\SDL_audioresample.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\audio\SDL_wave.h">
@@ -208,6 +241,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\core\winrt\SDL_winrtapp_xaml.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\cpuinfo\SDL_cpuinfo_c.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\dynapi\SDL_dynapi.h">
@@ -255,6 +291,9 @@
     <ClInclude Include="..\src\joystick\SDL_joystick_c.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\joystick\SDL_steam_virtual_gamepad.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\src\joystick\SDL_sysjoystick.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -269,6 +308,9 @@
     </ClInclude>
     <ClInclude Include="..\src\joystick\windows\SDL_xinputjoystick_c.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\main\SDL_main_callbacks.h">
+      <Filter>main</Filter>
     </ClInclude>
     <ClInclude Include="..\src\render\direct3d11\SDL_render_winrt.h">
       <Filter>Source Files</Filter>
@@ -324,6 +366,9 @@
     <ClInclude Include="..\src\SDL_fatal.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\SDL_hashtable.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\src\SDL_hints_c.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -331,6 +376,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\SDL_log_c.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\SDL_properties_c.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\locale\SDL_syslocale.h">
@@ -372,6 +420,9 @@
     <ClInclude Include="..\src\video\SDL_blit_slow.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\video\SDL_clipboard_c.h">
+      <Filter>video</Filter>
+    </ClInclude>
     <ClInclude Include="..\src\video\SDL_egl_c.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -384,10 +435,10 @@
     <ClInclude Include="..\src\video\SDL_RLEaccel_c.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\video\SDL_shape_internals.h">
+    <ClInclude Include="..\src\video\SDL_sysvideo.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\video\SDL_sysvideo.h">
+    <ClInclude Include="..\src\video\SDL_sysvideocapture.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\video\winrt\SDL_winrtevents_c.h">
@@ -411,13 +462,7 @@
     <ClInclude Include="..\src\video\winrt\SDL_winrtgamebar_cpp.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\SDL_dataqueue.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\SDL_list.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\haptic\windows\SDL_xinputhaptic_c.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\haptic\windows\SDL_dinputhaptic_c.h">
@@ -435,7 +480,7 @@
     <ClInclude Include="..\src\render\direct3d11\SDL_shaders_d3d11.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_sensor.h">
+    <ClInclude Include="..\include\SDL3\SDL_sensor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\sensor\SDL_sensor_c.h">
@@ -450,7 +495,7 @@
     <ClInclude Include="..\src\events\SDL_displayevents_c.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\SDL_misc.h">
+    <ClInclude Include="..\include\SDL3\SDL_misc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClCompile Include="..\src\atomic\SDL_atomic.c">
@@ -477,6 +522,12 @@
     <ClCompile Include="..\src\audio\SDL_audiotypecvt.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\audio\SDL_audioqueue.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\audio\SDL_audioresample.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>        
     <ClCompile Include="..\src\audio\SDL_mixer.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -484,6 +535,18 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\audio\wasapi\SDL_wasapi_winrt.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\camera\dummy\SDL_camera_dummy.c">
+      <Filter>camera\dummy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\camera\SDL_camera.c">
+      <Filter>camera</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\core\SDL_core_unsupported.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\core\SDL_runapp.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\core\windows\SDL_windows.c">
@@ -504,6 +567,9 @@
     <ClCompile Include="..\src\cpuinfo\SDL_cpuinfo.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\dialog\SDL_dialog_utils.c">
+      <Filter>dialog</Filter>
+    </ClCompile>
     <ClCompile Include="..\src\dynapi\SDL_dynapi.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -516,13 +582,13 @@
     <ClCompile Include="..\src\events\SDL_events.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\events\SDL_gesture.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\events\SDL_keyboard.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\events\SDL_mouse.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\events\SDL_pen.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\events\SDL_quit.c">
@@ -534,10 +600,16 @@
     <ClCompile Include="..\src\events\SDL_windowevents.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\filesystem\SDL_filesystem.c">
+      <Filter>filesystem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\filesystem\windows\SDL_sysfsops.c">
+      <Filter>filesystem\windows</Filter>
+    </ClCompile>
     <ClCompile Include="..\src\filesystem\winrt\SDL_sysfilesystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\file\SDL_rwops.c">
+    <ClCompile Include="..\src\file\SDL_iostream.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\haptic\dummy\SDL_syshaptic.c">
@@ -552,10 +624,13 @@
     <ClCompile Include="..\src\joystick\dummy\SDL_sysjoystick.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\joystick\SDL_gamecontroller.c">
+    <ClCompile Include="..\src\joystick\SDL_gamepad.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\joystick\SDL_joystick.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\joystick\SDL_steam_virtual_gamepad.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\joystick\virtual\SDL_virtualjoystick.c">
@@ -572,6 +647,12 @@
     </ClCompile>
     <ClCompile Include="..\src\loadso\windows\SDL_sysloadso.c">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\main\generic\SDL_sysmain_callbacks.c">
+      <Filter>main\generic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\main\SDL_main_callbacks.c">
+      <Filter>main</Filter>
     </ClCompile>
     <ClCompile Include="..\src\power\SDL_power.c">
       <Filter>Source Files</Filter>
@@ -595,6 +676,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\render\SDL_render.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\render\SDL_render_unsupported.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\render\SDL_yuv_sw.c">
@@ -636,10 +720,22 @@
     <ClCompile Include="..\src\SDL_guid.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\SDL_hashtable.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\src\SDL_hints.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\SDL_list.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\src\SDL_log.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\SDL_utils.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\SDL_properties.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\locale\SDL_locale.c">
@@ -661,6 +757,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\stdlib\SDL_malloc.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\stdlib\SDL_memcpy.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\stdlib\SDL_memmove.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\stdlib\SDL_memset.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\stdlib\SDL_qsort.c">
@@ -687,6 +792,9 @@
     <ClCompile Include="..\src\thread\stdcpp\SDL_sysmutex.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\thread\stdcpp\SDL_sysrwlock.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\src\thread\stdcpp\SDL_systhread.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -695,6 +803,12 @@
     </ClCompile>
     <ClCompile Include="..\src\timer\windows\SDL_systimer.c">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\time\SDL_time.c">
+      <Filter>time</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\time\windows\SDL_systime.c">
+      <Filter>time\windows</Filter>
     </ClCompile>
     <ClCompile Include="..\src\video\dummy\SDL_nullevents.c">
       <Filter>Source Files</Filter>
@@ -750,9 +864,6 @@
     <ClCompile Include="..\src\video\SDL_RLEaccel.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\video\SDL_shape.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\video\SDL_stretch.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -760,6 +871,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\video\SDL_video.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\video\SDL_video_unsupported.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\video\winrt\SDL_winrtevents.cpp">
@@ -789,22 +903,10 @@
     <ClCompile Include="..\src\video\winrt\SDL_winrtgamebar.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\SDL_dataqueue.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\SDL_list.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\SDL_utils.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\haptic\windows\SDL_dinputhaptic.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\haptic\windows\SDL_windowshaptic.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\haptic\windows\SDL_xinputhaptic.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\video\SDL_yuv.c">
@@ -834,6 +936,9 @@
     <ClInclude Include="..\src\joystick\controller_type.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\SDL3\SDL_main_impl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\joystick\windows\SDL_windows_gaming_input.c">
@@ -843,6 +948,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\stdlib\SDL_mslibc.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <MASM Include="..\src\stdlib\SDL_mslibc_x64.masm">
+      <Filter>stdlib</Filter>
+    </MASM>
+    <ClCompile Include="..\src\core\windows\pch.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\core\windows\pch_cpp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,6 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
+#include "SDL_internal.h"
 
 #include "../SDL_sysurl.h"
 #include "../../core/windows/SDL_windows.h"
@@ -26,7 +27,7 @@ int SDL_SYS_OpenURL(const char *url)
 {
     WCHAR *wurl = WIN_UTF8ToStringW(url);
     if (!wurl) {
-        return SDL_OutOfMemory();
+        return -1;
     }
     auto strurl = ref new Platform::String(wurl);
     SDL_free(wurl);
@@ -35,5 +36,3 @@ int SDL_SYS_OpenURL(const char *url)
     Windows::System::Launcher::LaunchUriAsync(uri);
     return 0; // oh well, we're not waiting on an async task here.
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

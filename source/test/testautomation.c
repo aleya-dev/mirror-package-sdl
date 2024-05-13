@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -11,22 +11,57 @@
 */
 
 #include <stdlib.h>
-#include <stdio.h>
-#include <time.h>
 
-#include "SDL.h"
-#include "SDL_test.h"
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+#include <SDL3/SDL_test.h>
 
 #include "testautomation_suites.h"
 
 static SDLTest_CommonState *state;
+
+/* All test suites */
+static SDLTest_TestSuiteReference *testSuites[] = {
+    &audioTestSuite,
+    &clipboardTestSuite,
+    &eventsTestSuite,
+    &guidTestSuite,
+    &hintsTestSuite,
+    &intrinsicsTestSuite,
+    &joystickTestSuite,
+    &keyboardTestSuite,
+    &logTestSuite,
+    &mainTestSuite,
+    &mathTestSuite,
+    &mouseTestSuite,
+#if !defined(SDL_PLATFORM_IOS) && !defined(SDL_PLATFORM_TVOS)
+    &penTestSuite,
+#endif
+    &pixelsTestSuite,
+    &platformTestSuite,
+    &propertiesTestSuite,
+    &rectTestSuite,
+    &renderTestSuite,
+    &iostrmTestSuite,
+    &sdltestTestSuite,
+    &stdlibTestSuite,
+    &surfaceTestSuite,
+    &timeTestSuite,
+    &timerTestSuite,
+    &videoTestSuite,
+    &subsystemsTestSuite, /* run last, not interfere with other test enviroment */
+    NULL
+};
 
 /* Call this instead of exit(), so we can clean up SDL: atexit() is evil. */
 static void
 quit(int rc)
 {
     SDLTest_CommonQuit(state);
-    exit(rc);
+    /* Let 'main()' return normally */
+    if (rc != 0) {
+        exit(rc);
+    }
 }
 
 int main(int argc, char *argv[])
@@ -38,10 +73,11 @@ int main(int argc, char *argv[])
     char *filter = NULL;
     int i, done;
     SDL_Event event;
+    int list = 0;
 
     /* Initialize test framework */
-    state = SDLTest_CommonCreateState(argv, SDL_INIT_VIDEO);
-    if (state == NULL) {
+    state = SDLTest_CommonCreateState(argv, SDL_INIT_VIDEO | SDL_INIT_AUDIO);
+    if (!state) {
         return 1;
     }
 
@@ -78,15 +114,33 @@ int main(int argc, char *argv[])
                     filter = SDL_strdup(argv[i + 1]);
                     consumed = 2;
                 }
+            } else if (SDL_strcasecmp(argv[i], "--list") == 0) {
+                consumed = 1;
+                list = 1;
             }
         }
         if (consumed < 0) {
-            static const char *options[] = { "[--iterations #]", "[--execKey #]", "[--seed string]", "[--filter suite_name|test_name]", NULL };
+            static const char *options[] = { "[--iterations #]", "[--execKey #]", "[--seed string]", "[--filter suite_name|test_name]", "[--list]", NULL };
             SDLTest_CommonLogUsage(state, argv[0], options);
             quit(1);
         }
 
         i += consumed;
+    }
+
+    /* List all suites. */
+    if (list) {
+        int suiteCounter;
+        for (suiteCounter = 0; testSuites[suiteCounter]; ++suiteCounter) {
+            int testCounter;
+            SDLTest_TestSuiteReference *testSuite = testSuites[suiteCounter];
+            SDL_Log("Test suite: %s", testSuite->name);
+            for (testCounter = 0; testSuite->testCases[testCounter]; ++testCounter) {
+                const SDLTest_TestCaseReference *testCase = testSuite->testCases[testCounter];
+                SDL_Log("      test: %s%s", testCase->name, testCase->enabled ? "" : " (disabled)");
+            }
+        }
+        return 0;
     }
 
     /* Initialize common state */
@@ -118,8 +172,6 @@ int main(int argc, char *argv[])
     SDL_free(filter);
 
     /* Shutdown everything */
-    quit(result);
+    quit(0);
     return result;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

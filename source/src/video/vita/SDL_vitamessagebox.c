@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,9 +18,9 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_VITA
+#ifdef SDL_VIDEO_DRIVER_VITA
 
 #include "SDL_vitavideo.h"
 #include "SDL_vitamessagebox.h"
@@ -30,7 +30,7 @@
 #include "../../render/vitagxm/SDL_render_vita_gxm_tools.h"
 #endif /* SDL_VIDEO_RENDER_VITA_GXM */
 
-int VITA_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
+int VITA_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
 {
 #if SDL_VIDEO_RENDER_VITA_GXM
     SceMsgDialogParam param;
@@ -91,17 +91,17 @@ int VITA_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
         sceMsgDialogGetResult(&dialog_result);
 
         if (dialog_result.buttonId == SCE_MSG_DIALOG_BUTTON_ID_BUTTON1) {
-            *buttonid = messageboxdata->buttons[0].buttonid;
+            *buttonID = messageboxdata->buttons[0].buttonID;
         } else if (dialog_result.buttonId == SCE_MSG_DIALOG_BUTTON_ID_BUTTON2) {
-            *buttonid = messageboxdata->buttons[1].buttonid;
+            *buttonID = messageboxdata->buttons[1].buttonID;
         } else if (dialog_result.buttonId == SCE_MSG_DIALOG_BUTTON_ID_BUTTON3) {
-            *buttonid = messageboxdata->buttons[2].buttonid;
+            *buttonID = messageboxdata->buttons[2].buttonID;
         } else if (dialog_result.buttonId == SCE_MSG_DIALOG_BUTTON_ID_YES) {
-            *buttonid = messageboxdata->buttons[0].buttonid;
+            *buttonID = messageboxdata->buttons[0].buttonID;
         } else if (dialog_result.buttonId == SCE_MSG_DIALOG_BUTTON_ID_NO) {
-            *buttonid = messageboxdata->buttons[1].buttonid;
+            *buttonID = messageboxdata->buttons[1].buttonID;
         } else if (dialog_result.buttonId == SCE_MSG_DIALOG_BUTTON_ID_OK) {
-            *buttonid = messageboxdata->buttons[0].buttonid;
+            *buttonID = messageboxdata->buttons[0].buttonID;
         }
         sceMsgDialogTerm();
     } else {
@@ -117,11 +117,9 @@ int VITA_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
     return 0;
 #else
     (void)messageboxdata;
-    (void)buttonid;
+    (void)buttonID;
     return -1;
 #endif
 }
 
 #endif /* SDL_VIDEO_DRIVER_VITA */
-
-/* vi: set ts=4 sw=4 expandtab: */

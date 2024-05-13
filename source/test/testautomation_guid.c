@@ -2,8 +2,9 @@
  * GUID test suite
  */
 
-#include "SDL.h"
-#include "SDL_test.h"
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_test.h>
+#include "testautomation_suites.h"
 
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
@@ -69,9 +70,9 @@ upper_lower_to_bytestring(Uint8 *out, Uint64 upper, Uint64 lower)
 /* Test case functions */
 
 /**
- * @brief Check String-to-GUID conversion
+ * Check String-to-GUID conversion
  *
- * @sa SDL_GUIDFromString
+ * \sa SDL_GUIDFromString
  */
 static int
 TestGuidFromString(void *arg)
@@ -94,9 +95,9 @@ TestGuidFromString(void *arg)
 }
 
 /**
- * @brief Check GUID-to-String conversion
+ * Check GUID-to-String conversion
  *
- * @sa SDL_GUIDToString
+ * \sa SDL_GUIDToString
  */
 static int
 TestGuidToString(void *arg)
@@ -116,7 +117,7 @@ TestGuidToString(void *arg)
 
         /* Serialise to limited-length buffers */
         for (size = 0; size <= 36; ++size) {
-            const Uint8 fill_char = size + 0xa0;
+            const Uint8 fill_char = (Uint8)(size + 0xa0);
             Uint32 expected_prefix;
             Uint32 actual_prefix;
             int written_size;
@@ -125,7 +126,7 @@ TestGuidToString(void *arg)
             SDL_GUIDToString(guid, guid_str, size);
 
             /* Check bytes before guid_str_buf */
-            expected_prefix = fill_char | (fill_char << 8) | (fill_char << 16) | (fill_char << 24);
+            expected_prefix = fill_char | (fill_char << 8) | (fill_char << 16) | (((Uint32)fill_char) << 24);
             SDL_memcpy(&actual_prefix, guid_str_buf, 4);
             SDLTest_AssertCheck(expected_prefix == actual_prefix, "String buffer memory before output untouched, expected: %" SDL_PRIu32 ", got: %" SDL_PRIu32 ", at size=%d", expected_prefix, actual_prefix, size);
 

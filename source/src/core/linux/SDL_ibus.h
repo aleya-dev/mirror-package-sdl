@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,14 +19,13 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_ibus_h_
 #define SDL_ibus_h_
 
 #ifdef HAVE_IBUS_IBUS_H
 #define SDL_USE_IBUS 1
-#include "SDL_stdinc.h"
 #include <ibus-1.0/ibus.h>
 
 extern SDL_bool SDL_IBus_Init(void);
@@ -54,5 +53,3 @@ extern void SDL_IBus_PumpEvents(void);
 #endif /* HAVE_IBUS_IBUS_H */
 
 #endif /* SDL_ibus_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

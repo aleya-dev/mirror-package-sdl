@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,13 +19,12 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#if SDL_THREAD_WINDOWS
+#ifdef SDL_THREAD_WINDOWS
 
 #include "../../core/windows/SDL_windows.h"
 
-#include "SDL_thread.h"
 #include "../SDL_thread_c.h"
 
 #if WINAPI_FAMILY_WINRT
@@ -47,7 +46,7 @@ SDL_TLSData *SDL_SYS_GetTLSData(void)
 {
     if (thread_local_storage == TLS_OUT_OF_INDEXES && !generic_local_storage) {
         static SDL_SpinLock lock;
-        SDL_AtomicLock(&lock);
+        SDL_LockSpinlock(&lock);
         if (thread_local_storage == TLS_OUT_OF_INDEXES && !generic_local_storage) {
             DWORD storage = TlsAlloc();
             if (storage != TLS_OUT_OF_INDEXES) {
@@ -57,7 +56,7 @@ SDL_TLSData *SDL_SYS_GetTLSData(void)
                 generic_local_storage = SDL_TRUE;
             }
         }
-        SDL_AtomicUnlock(&lock);
+        SDL_UnlockSpinlock(&lock);
     }
     if (generic_local_storage) {
         return SDL_Generic_GetTLSData();
@@ -78,5 +77,3 @@ int SDL_SYS_SetTLSData(SDL_TLSData *data)
 }
 
 #endif /* SDL_THREAD_WINDOWS */
-
-/* vi: set ts=4 sw=4 expandtab: */

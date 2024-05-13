@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,13 +18,12 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_UIKIT
+#ifdef SDL_VIDEO_DRIVER_UIKIT
 
 #include "../../events/SDL_events_c.h"
 
-#include "SDL_system.h"
 #include "SDL_uikitevents.h"
 #include "SDL_uikitopengles.h"
 #include "SDL_uikitvideo.h"
@@ -41,9 +40,8 @@
 
 static BOOL UIKit_EventPumpEnabled = YES;
 
-
 @interface SDL_LifecycleObserver : NSObject
-@property (nonatomic, assign) BOOL isObservingNotifications;
+@property(nonatomic, assign) BOOL isObservingNotifications;
 @end
 
 @implementation SDL_LifecycleObserver
@@ -59,8 +57,11 @@ static BOOL UIKit_EventPumpEnabled = YES;
         [notificationCenter addObserver:self selector:@selector(applicationWillEnterForeground) name:UIApplicationWillEnterForegroundNotification object:nil];
         [notificationCenter addObserver:self selector:@selector(applicationWillTerminate) name:UIApplicationWillTerminateNotification object:nil];
         [notificationCenter addObserver:self selector:@selector(applicationDidReceiveMemoryWarning) name:UIApplicationDidReceiveMemoryWarningNotification object:nil];
-#if !TARGET_OS_TV
-        [notificationCenter addObserver:self selector:@selector(applicationDidChangeStatusBarOrientation) name:UIApplicationDidChangeStatusBarOrientationNotification object:nil];
+#if !defined(SDL_PLATFORM_TVOS) && !defined(SDL_PLATFORM_VISIONOS)
+        [notificationCenter addObserver:self
+                               selector:@selector(applicationDidChangeStatusBarOrientation)
+                                   name:UIApplicationDidChangeStatusBarOrientationNotification
+                                 object:nil];
 #endif
     } else if (!UIKit_EventPumpEnabled && self.isObservingNotifications) {
         self.isObservingNotifications = NO;
@@ -98,7 +99,7 @@ static BOOL UIKit_EventPumpEnabled = YES;
     SDL_OnApplicationDidReceiveMemoryWarning();
 }
 
-#if !TARGET_OS_TV
+#if !defined(SDL_PLATFORM_TVOS) && !defined(SDL_PLATFORM_VISIONOS)
 - (void)applicationDidChangeStatusBarOrientation
 {
     SDL_OnApplicationDidChangeStatusBarOrientation();
@@ -107,20 +108,37 @@ static BOOL UIKit_EventPumpEnabled = YES;
 
 @end
 
+Uint64 UIKit_GetEventTimestamp(NSTimeInterval nsTimestamp)
+{
+    static Uint64 timestamp_offset;
+    Uint64 timestamp = (Uint64)(nsTimestamp * SDL_NS_PER_SECOND);
+    Uint64 now = SDL_GetTicksNS();
 
-void SDL_iPhoneSetEventPump(SDL_bool enabled)
+    if (!timestamp_offset) {
+        timestamp_offset = (now - timestamp);
+    }
+    timestamp += timestamp_offset;
+
+    if (timestamp > now) {
+        timestamp_offset -= (timestamp - now);
+        timestamp = now;
+    }
+    return timestamp;
+}
+
+void SDL_iOSSetEventPump(SDL_bool enabled)
 {
     UIKit_EventPumpEnabled = enabled;
 
     static SDL_LifecycleObserver *lifecycleObserver;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        lifecycleObserver = [SDL_LifecycleObserver new];
+      lifecycleObserver = [SDL_LifecycleObserver new];
     });
     [lifecycleObserver eventPumpChanged];
 }
 
-void UIKit_PumpEvents(_THIS)
+void UIKit_PumpEvents(SDL_VideoDevice *_this)
 {
     if (!UIKit_EventPumpEnabled) {
         return;
@@ -143,37 +161,41 @@ void UIKit_PumpEvents(_THIS)
     /* Make sure UIScrollView objects scroll properly. */
     do {
         result = CFRunLoopRunInMode((CFStringRef)UITrackingRunLoopMode, seconds, TRUE);
-    } while(result == kCFRunLoopRunHandledSource);
+    } while (result == kCFRunLoopRunHandledSource);
 
     /* See the comment in the function definition. */
-#if SDL_VIDEO_OPENGL_ES || SDL_VIDEO_OPENGL_ES2
+#if defined(SDL_VIDEO_OPENGL_ES) || defined(SDL_VIDEO_OPENGL_ES2)
     UIKit_GL_RestoreCurrentContext();
 #endif
 }
 
 #ifdef ENABLE_GCKEYBOARD
 
-static SDL_bool keyboard_connected = SDL_FALSE;
 static id keyboard_connect_observer = nil;
 static id keyboard_disconnect_observer = nil;
 
 static void OnGCKeyboardConnected(GCKeyboard *keyboard) API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0))
 {
-    keyboard_connected = SDL_TRUE;
-    keyboard.keyboardInput.keyChangedHandler = ^(GCKeyboardInput *kbrd, GCControllerButtonInput *key, GCKeyCode keyCode, BOOL pressed)
-    {
-        SDL_SendKeyboardKey(pressed ? SDL_PRESSED : SDL_RELEASED, (SDL_Scancode)keyCode);
+    SDL_KeyboardID keyboardID = (SDL_KeyboardID)(uintptr_t)keyboard;
+
+    SDL_AddKeyboard(keyboardID, NULL, SDL_TRUE);
+
+    keyboard.keyboardInput.keyChangedHandler = ^(GCKeyboardInput *kbrd, GCControllerButtonInput *key, GCKeyCode keyCode, BOOL pressed) {
+        SDL_SendKeyboardKey(0, keyboardID, pressed ? SDL_PRESSED : SDL_RELEASED, (SDL_Scancode)keyCode);
     };
 
-    dispatch_queue_t queue = dispatch_queue_create( "org.libsdl.input.keyboard", DISPATCH_QUEUE_SERIAL );
-    dispatch_set_target_queue( queue, dispatch_get_global_queue( DISPATCH_QUEUE_PRIORITY_HIGH, 0 ) );
+    dispatch_queue_t queue = dispatch_queue_create("org.libsdl.input.keyboard", DISPATCH_QUEUE_SERIAL);
+    dispatch_set_target_queue(queue, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0));
     keyboard.handlerQueue = queue;
 }
 
 static void OnGCKeyboardDisconnected(GCKeyboard *keyboard) API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0))
 {
+    SDL_KeyboardID keyboardID = (SDL_KeyboardID)(uintptr_t)keyboard;
+
+    SDL_RemoveKeyboard(keyboardID);
+
     keyboard.keyboardInput.keyChangedHandler = nil;
-    keyboard_connected = SDL_FALSE;
 }
 
 void SDL_InitGCKeyboard(void)
@@ -186,16 +208,16 @@ void SDL_InitGCKeyboard(void)
                                                             object:nil
                                                              queue:nil
                                                         usingBlock:^(NSNotification *note) {
-                                                            GCKeyboard *keyboard = note.object;
-                                                            OnGCKeyboardConnected(keyboard);
+                                                          GCKeyboard *keyboard = note.object;
+                                                          OnGCKeyboardConnected(keyboard);
                                                         }];
 
             keyboard_disconnect_observer = [center addObserverForName:GCKeyboardDidDisconnectNotification
                                                                object:nil
                                                                 queue:nil
                                                            usingBlock:^(NSNotification *note) {
-                                                                GCKeyboard *keyboard = note.object;
-                                                                OnGCKeyboardDisconnected(keyboard);
+                                                             GCKeyboard *keyboard = note.object;
+                                                             OnGCKeyboardDisconnected(keyboard);
                                                            }];
 
             if (GCKeyboard.coalescedKeyboard != nil) {
@@ -203,11 +225,6 @@ void SDL_InitGCKeyboard(void)
             }
         }
     }
-}
-
-SDL_bool SDL_HasGCKeyboard(void)
-{
-    return keyboard_connected;
 }
 
 void SDL_QuitGCKeyboard(void)
@@ -239,26 +256,44 @@ void SDL_InitGCKeyboard(void)
 {
 }
 
-SDL_bool SDL_HasGCKeyboard(void)
-{
-    return SDL_FALSE;
-}
-
 void SDL_QuitGCKeyboard(void)
 {
 }
 
 #endif /* ENABLE_GCKEYBOARD */
 
-
 #ifdef ENABLE_GCMOUSE
 
-static int mice_connected = 0;
 static id mouse_connect_observer = nil;
 static id mouse_disconnect_observer = nil;
 static bool mouse_relative_mode = SDL_FALSE;
+static SDL_MouseWheelDirection mouse_scroll_direction = SDL_MOUSEWHEEL_NORMAL;
 
-static void UpdatePointerLock()
+static void UpdateScrollDirection(void)
+{
+#if 0 /* This code doesn't work for some reason */
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    if ([userDefaults boolForKey:@"com.apple.swipescrolldirection"]) {
+        mouse_scroll_direction = SDL_MOUSEWHEEL_FLIPPED;
+    } else {
+        mouse_scroll_direction = SDL_MOUSEWHEEL_NORMAL;
+    }
+#else
+    Boolean keyExistsAndHasValidFormat = NO;
+    Boolean naturalScrollDirection = CFPreferencesGetAppBooleanValue(CFSTR("com.apple.swipescrolldirection"), kCFPreferencesAnyApplication, &keyExistsAndHasValidFormat);
+    if (!keyExistsAndHasValidFormat) {
+        /* Couldn't read the preference, assume natural scrolling direction */
+        naturalScrollDirection = YES;
+    }
+    if (naturalScrollDirection) {
+        mouse_scroll_direction = SDL_MOUSEWHEEL_FLIPPED;
+    } else {
+        mouse_scroll_direction = SDL_MOUSEWHEEL_NORMAL;
+    }
+#endif
+}
+
+static void UpdatePointerLock(void)
 {
     SDL_VideoDevice *_this = SDL_GetVideoDevice();
     SDL_Window *window;
@@ -277,59 +312,66 @@ static int SetGCMouseRelativeMode(SDL_bool enabled)
 
 static void OnGCMouseButtonChanged(SDL_MouseID mouseID, Uint8 button, BOOL pressed)
 {
-    SDL_SendMouseButton(SDL_GetMouseFocus(), mouseID, pressed ? SDL_PRESSED : SDL_RELEASED, button);
+    SDL_SendMouseButton(0, SDL_GetMouseFocus(), mouseID, pressed ? SDL_PRESSED : SDL_RELEASED, button);
 }
 
 static void OnGCMouseConnected(GCMouse *mouse) API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0))
 {
-    SDL_MouseID mouseID = mice_connected;
+    SDL_MouseID mouseID = (SDL_MouseID)(uintptr_t)mouse;
 
-    mouse.mouseInput.leftButton.pressedChangedHandler = ^(GCControllerButtonInput *button, float value, BOOL pressed)
-    {
-        OnGCMouseButtonChanged(mouseID, SDL_BUTTON_LEFT, pressed);
+    SDL_AddMouse(mouseID, NULL, SDL_TRUE);
+
+    mouse.mouseInput.leftButton.pressedChangedHandler = ^(GCControllerButtonInput *button, float value, BOOL pressed) {
+      OnGCMouseButtonChanged(mouseID, SDL_BUTTON_LEFT, pressed);
     };
-    mouse.mouseInput.middleButton.pressedChangedHandler = ^(GCControllerButtonInput *button, float value, BOOL pressed)
-    {
-        OnGCMouseButtonChanged(mouseID, SDL_BUTTON_MIDDLE, pressed);
+    mouse.mouseInput.middleButton.pressedChangedHandler = ^(GCControllerButtonInput *button, float value, BOOL pressed) {
+      OnGCMouseButtonChanged(mouseID, SDL_BUTTON_MIDDLE, pressed);
     };
-    mouse.mouseInput.rightButton.pressedChangedHandler = ^(GCControllerButtonInput *button, float value, BOOL pressed)
-    {
-        OnGCMouseButtonChanged(mouseID, SDL_BUTTON_RIGHT, pressed);
+    mouse.mouseInput.rightButton.pressedChangedHandler = ^(GCControllerButtonInput *button, float value, BOOL pressed) {
+      OnGCMouseButtonChanged(mouseID, SDL_BUTTON_RIGHT, pressed);
     };
 
     int auxiliary_button = SDL_BUTTON_X1;
     for (GCControllerButtonInput *btn in mouse.mouseInput.auxiliaryButtons) {
-        btn.pressedChangedHandler = ^(GCControllerButtonInput *button, float value, BOOL pressed)
-        {
-            OnGCMouseButtonChanged(mouseID, auxiliary_button, pressed);
+        btn.pressedChangedHandler = ^(GCControllerButtonInput *button, float value, BOOL pressed) {
+          OnGCMouseButtonChanged(mouseID, auxiliary_button, pressed);
         };
         ++auxiliary_button;
     }
 
-    mouse.mouseInput.mouseMovedHandler = ^(GCMouseInput *mouseInput, float deltaX, float deltaY)
-    {
-        if (SDL_GCMouseRelativeMode()) {
-            SDL_SendMouseMotion(SDL_GetMouseFocus(), mouseID, 1, (int)deltaX, -(int)deltaY);
+    mouse.mouseInput.mouseMovedHandler = ^(GCMouseInput *mouseInput, float deltaX, float deltaY) {
+      if (SDL_GCMouseRelativeMode()) {
+          SDL_SendMouseMotion(0, SDL_GetMouseFocus(), mouseID, 1, deltaX, -deltaY);
+      }
+    };
+
+    mouse.mouseInput.scroll.valueChangedHandler = ^(GCControllerDirectionPad *dpad, float xValue, float yValue) {
+        /* Raw scroll values come in here, vertical values in the first axis, horizontal values in the second axis.
+         * The vertical values are negative moving the mouse wheel up and positive moving it down.
+         * The horizontal values are negative moving the mouse wheel left and positive moving it right.
+         * The vertical values are inverted compared to SDL, and the horizontal values are as expected.
+         */
+        float vertical = -xValue;
+        float horizontal = yValue;
+        if (mouse_scroll_direction == SDL_MOUSEWHEEL_FLIPPED) {
+            /* Since these are raw values, we need to flip them ourselves */
+            vertical = -vertical;
+            horizontal = -horizontal;
         }
+        SDL_SendMouseWheel(0, SDL_GetMouseFocus(), mouseID, horizontal, vertical, mouse_scroll_direction);
     };
+    UpdateScrollDirection();
 
-    mouse.mouseInput.scroll.valueChangedHandler = ^(GCControllerDirectionPad *dpad, float xValue, float yValue)
-    {
-        SDL_SendMouseWheel(SDL_GetMouseFocus(), 0, xValue, yValue, SDL_MOUSEWHEEL_NORMAL);
-    };
-
-    dispatch_queue_t queue = dispatch_queue_create( "org.libsdl.input.mouse", DISPATCH_QUEUE_SERIAL );
-    dispatch_set_target_queue( queue, dispatch_get_global_queue( DISPATCH_QUEUE_PRIORITY_HIGH, 0 ) );
+    dispatch_queue_t queue = dispatch_queue_create("org.libsdl.input.mouse", DISPATCH_QUEUE_SERIAL);
+    dispatch_set_target_queue(queue, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0));
     mouse.handlerQueue = queue;
-
-    ++mice_connected;
 
     UpdatePointerLock();
 }
 
 static void OnGCMouseDisconnected(GCMouse *mouse) API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0))
 {
-    --mice_connected;
+    SDL_MouseID mouseID = (SDL_MouseID)(uintptr_t)mouse;
 
     mouse.mouseInput.mouseMovedHandler = nil;
 
@@ -342,6 +384,8 @@ static void OnGCMouseDisconnected(GCMouse *mouse) API_AVAILABLE(macos(11.0), ios
     }
 
     UpdatePointerLock();
+
+    SDL_RemoveMouse(mouseID);
 }
 
 void SDL_InitGCMouse(void)
@@ -360,17 +404,17 @@ void SDL_InitGCMouse(void)
                                                              object:nil
                                                               queue:nil
                                                          usingBlock:^(NSNotification *note) {
-                                                             GCMouse *mouse = note.object;
-                                                             OnGCMouseConnected(mouse);
+                                                           GCMouse *mouse = note.object;
+                                                           OnGCMouseConnected(mouse);
                                                          }];
 
                 mouse_disconnect_observer = [center addObserverForName:GCMouseDidDisconnectNotification
                                                                 object:nil
                                                                  queue:nil
                                                             usingBlock:^(NSNotification *note) {
-                                                                GCMouse *mouse = note.object;
-                                                                OnGCMouseDisconnected(mouse);
-                                                           }];
+                                                              GCMouse *mouse = note.object;
+                                                              OnGCMouseDisconnected(mouse);
+                                                            }];
 
                 for (GCMouse *mouse in [GCMouse mice]) {
                     OnGCMouseConnected(mouse);
@@ -382,11 +426,6 @@ void SDL_InitGCMouse(void)
             }
         }
     }
-}
-
-SDL_bool SDL_HasGCMouse(void)
-{
-    return (mice_connected > 0);
 }
 
 SDL_bool SDL_GCMouseRelativeMode(void)
@@ -425,11 +464,6 @@ void SDL_InitGCMouse(void)
 {
 }
 
-SDL_bool SDL_HasGCMouse(void)
-{
-    return SDL_FALSE;
-}
-
 SDL_bool SDL_GCMouseRelativeMode(void)
 {
     return SDL_FALSE;
@@ -442,5 +476,3 @@ void SDL_QuitGCMouse(void)
 #endif /* ENABLE_GCMOUSE */
 
 #endif /* SDL_VIDEO_DRIVER_UIKIT */
-
-/* vi: set ts=4 sw=4 expandtab: */

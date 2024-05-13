@@ -1,24 +1,22 @@
 /**
  * Timer test suite
  */
-
-#include <stdio.h>
-
-#include "SDL.h"
-#include "SDL_test.h"
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_test.h>
+#include "testautomation_suites.h"
 
 /* Flag indicating if the param should be checked */
-int _paramCheck = 0;
+static int g_paramCheck = 0;
 
 /* Userdata value to check */
-int _paramValue = 0;
+static int g_paramValue = 0;
 
 /* Flag indicating that the callback was called */
-int _timerCallbackCalled = 0;
+static int g_timerCallbackCalled = 0;
 
 /* Fixture */
 
-void _timerSetUp(void *arg)
+static void timerSetUp(void *arg)
 {
     /* Start SDL timer subsystem */
     int ret = SDL_InitSubSystem(SDL_INIT_TIMER);
@@ -32,9 +30,9 @@ void _timerSetUp(void *arg)
 /* Test case functions */
 
 /**
- * @brief Call to SDL_GetPerformanceCounter
+ * Call to SDL_GetPerformanceCounter
  */
-int timer_getPerformanceCounter(void *arg)
+static int timer_getPerformanceCounter(void *arg)
 {
     Uint64 result;
 
@@ -46,9 +44,9 @@ int timer_getPerformanceCounter(void *arg)
 }
 
 /**
- * @brief Call to SDL_GetPerformanceFrequency
+ * Call to SDL_GetPerformanceFrequency
  */
-int timer_getPerformanceFrequency(void *arg)
+static int timer_getPerformanceFrequency(void *arg)
 {
     Uint64 result;
 
@@ -60,15 +58,15 @@ int timer_getPerformanceFrequency(void *arg)
 }
 
 /**
- * @brief Call to SDL_Delay and SDL_GetTicks
+ * Call to SDL_Delay and SDL_GetTicks
  */
-int timer_delayAndGetTicks(void *arg)
+static int timer_delayAndGetTicks(void *arg)
 {
-    const Uint32 testDelay = 100;
-    const Uint32 marginOfError = 25;
-    Uint32 result;
-    Uint32 result2;
-    Uint32 difference;
+    const int testDelay = 100;
+    const int marginOfError = 25;
+    Uint64 result;
+    Uint64 result2;
+    Sint64 difference;
 
     /* Zero delay */
     SDL_Delay(0);
@@ -84,30 +82,33 @@ int timer_delayAndGetTicks(void *arg)
     /* Get ticks count - should be non-zero by now */
     result = SDL_GetTicks();
     SDLTest_AssertPass("Call to SDL_GetTicks()");
-    SDLTest_AssertCheck(result > 0, "Check result value, expected: >0, got: %" SDL_PRIu32, result);
+    SDLTest_AssertCheck(result > 0, "Check result value, expected: >0, got: %" SDL_PRIu64, result);
 
     /* Delay a bit longer and measure ticks and verify difference */
     SDL_Delay(testDelay);
-    SDLTest_AssertPass("Call to SDL_Delay(%" SDL_PRIu32 ")", testDelay);
+    SDLTest_AssertPass("Call to SDL_Delay(%d)", testDelay);
     result2 = SDL_GetTicks();
     SDLTest_AssertPass("Call to SDL_GetTicks()");
-    SDLTest_AssertCheck(result2 > 0, "Check result value, expected: >0, got: %" SDL_PRIu32, result2);
+    SDLTest_AssertCheck(result2 > 0, "Check result value, expected: >0, got: %" SDL_PRIu64, result2);
     difference = result2 - result;
-    SDLTest_AssertCheck(difference > (testDelay - marginOfError), "Check difference, expected: >%" SDL_PRIu32 ", got: %" SDL_PRIu32, testDelay - marginOfError, difference);
-    SDLTest_AssertCheck(difference < (testDelay + marginOfError), "Check difference, expected: <%" SDL_PRIu32 ", got: %" SDL_PRIu32, testDelay + marginOfError, difference);
+    SDLTest_AssertCheck(difference > (testDelay - marginOfError), "Check difference, expected: >%d, got: %" SDL_PRIu64, testDelay - marginOfError, difference);
+#if 0
+    /* Disabled because this might fail on non-interactive systems. Moved to testtimer. */
+    SDLTest_AssertCheck(difference < (testDelay + marginOfError), "Check difference, expected: <%d, got: %" SDL_PRIu64, testDelay + marginOfError, difference);
+#endif
 
     return TEST_COMPLETED;
 }
 
 /* Test callback */
-Uint32 SDLCALL _timerTestCallback(Uint32 interval, void *param)
+static Uint32 SDLCALL timerTestCallback(Uint32 interval, void *param)
 {
-    _timerCallbackCalled = 1;
+    g_timerCallbackCalled = 1;
 
-    if (_paramCheck != 0) {
+    if (g_paramCheck != 0) {
         SDLTest_AssertCheck(param != NULL, "Check param pointer, expected: non-NULL, got: %s", (param != NULL) ? "non-NULL" : "NULL");
         if (param != NULL) {
-            SDLTest_AssertCheck(*(int *)param == _paramValue, "Check param value, expected: %i, got: %i", _paramValue, *(int *)param);
+            SDLTest_AssertCheck(*(int *)param == g_paramValue, "Check param value, expected: %i, got: %i", g_paramValue, *(int *)param);
         }
     }
 
@@ -115,28 +116,28 @@ Uint32 SDLCALL _timerTestCallback(Uint32 interval, void *param)
 }
 
 /**
- * @brief Call to SDL_AddTimer and SDL_RemoveTimer
+ * Call to SDL_AddTimer and SDL_RemoveTimer
  */
-int timer_addRemoveTimer(void *arg)
+static int timer_addRemoveTimer(void *arg)
 {
     SDL_TimerID id;
     SDL_bool result;
     int param;
 
     /* Reset state */
-    _paramCheck = 0;
-    _timerCallbackCalled = 0;
+    g_paramCheck = 0;
+    g_timerCallbackCalled = 0;
 
     /* Set timer with a long delay */
-    id = SDL_AddTimer(10000, _timerTestCallback, NULL);
+    id = SDL_AddTimer(10000, timerTestCallback, NULL);
     SDLTest_AssertPass("Call to SDL_AddTimer(10000,...)");
-    SDLTest_AssertCheck(id > 0, "Check result value, expected: >0, got: %d", id);
+    SDLTest_AssertCheck(id > 0, "Check result value, expected: >0, got: %" SDL_PRIu32, id);
 
     /* Remove timer again and check that callback was not called */
     result = SDL_RemoveTimer(id);
     SDLTest_AssertPass("Call to SDL_RemoveTimer()");
     SDLTest_AssertCheck(result == SDL_TRUE, "Check result value, expected: %i, got: %i", SDL_TRUE, result);
-    SDLTest_AssertCheck(_timerCallbackCalled == 0, "Check callback WAS NOT called, expected: 0, got: %i", _timerCallbackCalled);
+    SDLTest_AssertCheck(g_timerCallbackCalled == 0, "Check callback WAS NOT called, expected: 0, got: %i", g_timerCallbackCalled);
 
     /* Try to remove timer again (should be a NOOP) */
     result = SDL_RemoveTimer(id);
@@ -145,14 +146,14 @@ int timer_addRemoveTimer(void *arg)
 
     /* Reset state */
     param = SDLTest_RandomIntegerInRange(-1024, 1024);
-    _paramCheck = 1;
-    _paramValue = param;
-    _timerCallbackCalled = 0;
+    g_paramCheck = 1;
+    g_paramValue = param;
+    g_timerCallbackCalled = 0;
 
     /* Set timer with a short delay */
-    id = SDL_AddTimer(10, _timerTestCallback, (void *)&param);
+    id = SDL_AddTimer(10, timerTestCallback, (void *)&param);
     SDLTest_AssertPass("Call to SDL_AddTimer(10, param)");
-    SDLTest_AssertCheck(id > 0, "Check result value, expected: >0, got: %d", id);
+    SDLTest_AssertCheck(id > 0, "Check result value, expected: >0, got: %" SDL_PRIu32, id);
 
     /* Wait to let timer trigger callback */
     SDL_Delay(100);
@@ -162,7 +163,7 @@ int timer_addRemoveTimer(void *arg)
     result = SDL_RemoveTimer(id);
     SDLTest_AssertPass("Call to SDL_RemoveTimer()");
     SDLTest_AssertCheck(result == SDL_FALSE, "Check result value, expected: %i, got: %i", SDL_FALSE, result);
-    SDLTest_AssertCheck(_timerCallbackCalled == 1, "Check callback WAS called, expected: 1, got: %i", _timerCallbackCalled);
+    SDLTest_AssertCheck(g_timerCallbackCalled == 1, "Check callback WAS called, expected: 1, got: %i", g_timerCallbackCalled);
 
     return TEST_COMPLETED;
 }
@@ -194,7 +195,7 @@ static const SDLTest_TestCaseReference *timerTests[] = {
 /* Timer test suite (global) */
 SDLTest_TestSuiteReference timerTestSuite = {
     "Timer",
-    _timerSetUp,
+    timerSetUp,
     timerTests,
     NULL
 };

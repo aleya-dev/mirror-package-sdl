@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -11,16 +11,15 @@
 */
 /* Simple program:  Move N sprites around on the screen as fast as possible */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <time.h>
+#include <SDL3/SDL_test_common.h>
+#include <SDL3/SDL_main.h>
+#include "testutils.h"
 
-#ifdef __EMSCRIPTEN__
+#ifdef SDL_PLATFORM_EMSCRIPTEN
 #include <emscripten/emscripten.h>
 #endif
 
-#include "SDL_test_common.h"
-#include "testutils.h"
+#include <stdlib.h>
 
 static SDLTest_CommonState *state;
 
@@ -30,35 +29,38 @@ typedef struct
     SDL_Renderer *renderer;
     SDL_Texture *background;
     SDL_Texture *sprite;
-    SDL_Rect sprite_rect;
+    SDL_FRect sprite_rect;
     int scale_direction;
 } DrawState;
 
-DrawState *drawstates;
-int done;
+static DrawState *drawstates;
+static int done;
 
 /* Call this instead of exit(), so we can clean up SDL: atexit() is evil. */
 static void
 quit(int rc)
 {
     SDLTest_CommonQuit(state);
-    exit(rc);
+    /* Let 'main()' return normally */
+    if (rc != 0) {
+        exit(rc);
+    }
 }
 
-void Draw(DrawState *s)
+static void Draw(DrawState *s)
 {
     SDL_Rect viewport;
     SDL_Texture *target;
-    SDL_Point *center = NULL;
-    SDL_Point origin = { 0, 0 };
+    SDL_FPoint *center = NULL;
+    SDL_FPoint origin = { 0.0f, 0.0f };
 
-    SDL_RenderGetViewport(s->renderer, &viewport);
+    SDL_GetRenderViewport(s->renderer, &viewport);
 
     target = SDL_CreateTexture(s->renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, viewport.w, viewport.h);
     SDL_SetRenderTarget(s->renderer, target);
 
     /* Draw the background */
-    SDL_RenderCopy(s->renderer, s->background, NULL, NULL);
+    SDL_RenderTexture(s->renderer, s->background, NULL, NULL);
 
     /* Scale and draw the sprite */
     s->sprite_rect.w += s->scale_direction;
@@ -73,13 +75,13 @@ void Draw(DrawState *s)
             s->scale_direction = 1;
         }
     }
-    s->sprite_rect.x = (viewport.w - s->sprite_rect.w) / 2;
-    s->sprite_rect.y = (viewport.h - s->sprite_rect.h) / 2;
+    s->sprite_rect.x = (float)((viewport.w - s->sprite_rect.w) / 2);
+    s->sprite_rect.y = (float)((viewport.h - s->sprite_rect.h) / 2);
 
-    SDL_RenderCopyEx(s->renderer, s->sprite, NULL, &s->sprite_rect, (double)s->sprite_rect.w, center, (SDL_RendererFlip)s->scale_direction);
+    SDL_RenderTextureRotated(s->renderer, s->sprite, NULL, &s->sprite_rect, (double)s->sprite_rect.w, center, SDL_FLIP_NONE);
 
     SDL_SetRenderTarget(s->renderer, NULL);
-    SDL_RenderCopy(s->renderer, target, NULL, NULL);
+    SDL_RenderTexture(s->renderer, target, NULL, NULL);
     SDL_DestroyTexture(target);
 
     /* Update the screen! */
@@ -87,7 +89,7 @@ void Draw(DrawState *s)
     /* SDL_Delay(10); */
 }
 
-void loop()
+static void loop(void)
 {
     int i;
     SDL_Event event;
@@ -103,7 +105,7 @@ void loop()
         }
         Draw(&drawstates[i]);
     }
-#ifdef __EMSCRIPTEN__
+#ifdef SDL_PLATFORM_EMSCRIPTEN
     if (done) {
         emscripten_cancel_main_loop();
     }
@@ -114,16 +116,16 @@ int main(int argc, char *argv[])
 {
     int i;
     int frames;
-    Uint32 then, now;
-
-    /* Enable standard application logging */
-    SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
+    Uint64 then, now;
 
     /* Initialize test framework */
     state = SDLTest_CommonCreateState(argv, SDL_INIT_VIDEO);
-    if (state == NULL) {
+    if (!state) {
         return 1;
     }
+
+    /* Enable standard application logging */
+    SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
 
     if (!SDLTest_CommonDefaultArgs(state, argc, argv) || !SDLTest_CommonInit(state)) {
         SDLTest_CommonQuit(state);
@@ -133,6 +135,7 @@ int main(int argc, char *argv[])
     drawstates = SDL_stack_alloc(DrawState, state->num_windows);
     for (i = 0; i < state->num_windows; ++i) {
         DrawState *drawstate = &drawstates[i];
+        int w, h;
 
         drawstate->window = state->windows[i];
         drawstate->renderer = state->renderers[i];
@@ -141,8 +144,9 @@ int main(int argc, char *argv[])
         if (!drawstate->sprite || !drawstate->background) {
             quit(2);
         }
-        SDL_QueryTexture(drawstate->sprite, NULL, NULL,
-                         &drawstate->sprite_rect.w, &drawstate->sprite_rect.h);
+        SDL_QueryTexture(drawstate->sprite, NULL, NULL, &w, &h);
+        drawstate->sprite_rect.w = (float)w;
+        drawstate->sprite_rect.h = (float)h;
         drawstate->scale_direction = 1;
     }
 
@@ -151,7 +155,7 @@ int main(int argc, char *argv[])
     then = SDL_GetTicks();
     done = 0;
 
-#ifdef __EMSCRIPTEN__
+#ifdef SDL_PLATFORM_EMSCRIPTEN
     emscripten_set_main_loop(loop, 0, 1);
 #else
     while (!done) {
@@ -171,5 +175,3 @@ int main(int argc, char *argv[])
     quit(0);
     return 0;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

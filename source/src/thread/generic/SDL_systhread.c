@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,11 +18,10 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 /* Thread management routines for SDL */
 
-#include "SDL_thread.h"
 #include "../SDL_systhread.h"
 
 #ifdef SDL_PASSED_BEGINTHREAD_ENDTHREAD
@@ -41,7 +40,7 @@ void SDL_SYS_SetupThread(const char *name)
     return;
 }
 
-SDL_threadID SDL_ThreadID(void)
+SDL_ThreadID SDL_GetCurrentThreadID(void)
 {
     return 0;
 }
@@ -60,5 +59,3 @@ void SDL_SYS_DetachThread(SDL_Thread *thread)
 {
     return;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

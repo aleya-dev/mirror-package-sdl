@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,9 +19,9 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_NGAGE
+#ifdef SDL_VIDEO_DRIVER_NGAGE
 
 #include "../SDL_sysvideo.h"
 
@@ -29,15 +29,15 @@
 
 const TUint32 WindowClientHandle = 9210;
 
-void DisableKeyBlocking(_THIS);
-void ConstructWindowL(_THIS);
+void DisableKeyBlocking(SDL_VideoDevice *_this);
+void ConstructWindowL(SDL_VideoDevice *_this);
 
-int NGAGE_CreateWindow(_THIS, SDL_Window *window)
+int NGAGE_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID create_props)
 {
     NGAGE_Window *ngage_window = (NGAGE_Window *)SDL_calloc(1, sizeof(NGAGE_Window));
 
-    if (ngage_window == NULL) {
-        return SDL_OutOfMemory();
+    if (!ngage_window) {
+        return -1;
     }
 
     window->driverdata = ngage_window;
@@ -57,7 +57,7 @@ int NGAGE_CreateWindow(_THIS, SDL_Window *window)
     return 0;
 }
 
-void NGAGE_DestroyWindow(_THIS, SDL_Window *window)
+void NGAGE_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
     NGAGE_Window *ngage_window = (NGAGE_Window *)window->driverdata;
 
@@ -72,18 +72,18 @@ void NGAGE_DestroyWindow(_THIS, SDL_Window *window)
 /* Internal                                                                  */
 /*****************************************************************************/
 
-void DisableKeyBlocking(_THIS)
+void DisableKeyBlocking(SDL_VideoDevice *_this)
 {
-    SDL_VideoData *phdata = (SDL_VideoData *)_this->driverdata;
+    SDL_VideoData *phdata = _this->driverdata;
     TRawEvent event;
 
     event.Set((TRawEvent::TType) /*EDisableKeyBlock*/ 51);
     phdata->NGAGE_WsSession.SimulateRawEvent(event);
 }
 
-void ConstructWindowL(_THIS)
+void ConstructWindowL(SDL_VideoDevice *_this)
 {
-    SDL_VideoData *phdata = (SDL_VideoData *)_this->driverdata;
+    SDL_VideoData *phdata = _this->driverdata;
     TInt error;
 
     error = phdata->NGAGE_WsSession.Connect();
@@ -123,5 +123,3 @@ void ConstructWindowL(_THIS)
 }
 
 #endif /* SDL_VIDEO_DRIVER_NGAGE */
-
-/* vi: set ts=4 sw=4 expandtab: */

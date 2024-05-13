@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,7 +19,7 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 #include "../SDL_syslocale.h"
 
 static void normalize_locale_str(char *dst, char *str, size_t buflen)
@@ -27,12 +27,12 @@ static void normalize_locale_str(char *dst, char *str, size_t buflen)
     char *ptr;
 
     ptr = SDL_strchr(str, '.'); /* chop off encoding if specified. */
-    if (ptr != NULL) {
+    if (ptr) {
         *ptr = '\0';
     }
 
     ptr = SDL_strchr(str, '@'); /* chop off extra bits if specified. */
-    if (ptr != NULL) {
+    if (ptr) {
         *ptr = '\0';
     }
 
@@ -62,7 +62,7 @@ static void normalize_locales(char *dst, char *src, size_t buflen)
     normalize_locale_str(dst, src, buflen);
 }
 
-void SDL_SYS_GetPreferredLocales(char *buf, size_t buflen)
+int SDL_SYS_GetPreferredLocales(char *buf, size_t buflen)
 {
     /* !!! FIXME: should we be using setlocale()? Or some D-Bus thing? */
     SDL_bool isstack;
@@ -71,9 +71,8 @@ void SDL_SYS_GetPreferredLocales(char *buf, size_t buflen)
 
     SDL_assert(buflen > 0);
     tmp = SDL_small_alloc(char, buflen, &isstack);
-    if (tmp == NULL) {
-        SDL_OutOfMemory();
-        return;
+    if (!tmp) {
+        return -1;
     }
 
     *tmp = '\0';
@@ -100,6 +99,5 @@ void SDL_SYS_GetPreferredLocales(char *buf, size_t buflen)
     }
 
     SDL_small_free(tmp, isstack);
+    return 0;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

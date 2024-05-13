@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,33 +18,29 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_thread_c_h_
 #define SDL_thread_c_h_
 
-#include "SDL_thread.h"
-
 /* Need the definitions of SYS_ThreadHandle */
-#if SDL_THREADS_DISABLED
+#ifdef SDL_THREADS_DISABLED
 #include "generic/SDL_systhread_c.h"
-#elif SDL_THREAD_PTHREAD
+#elif defined(SDL_THREAD_PTHREAD)
 #include "pthread/SDL_systhread_c.h"
-#elif SDL_THREAD_WINDOWS
+#elif defined(SDL_THREAD_WINDOWS)
 #include "windows/SDL_systhread_c.h"
-#elif SDL_THREAD_PS2
+#elif defined(SDL_THREAD_PS2)
 #include "ps2/SDL_systhread_c.h"
-#elif SDL_THREAD_PSP
+#elif defined(SDL_THREAD_PSP)
 #include "psp/SDL_systhread_c.h"
-#elif SDL_THREAD_VITA
+#elif defined(SDL_THREAD_VITA)
 #include "vita/SDL_systhread_c.h"
-#elif SDL_THREAD_N3DS
+#elif defined(SDL_THREAD_N3DS)
 #include "n3ds/SDL_systhread_c.h"
-#elif SDL_THREAD_STDCPP
+#elif defined(SDL_THREAD_STDCPP)
 #include "stdcpp/SDL_systhread_c.h"
-#elif SDL_THREAD_OS2
-#include "os2/SDL_systhread_c.h"
-#elif SDL_THREAD_NGAGE
+#elif defined(SDL_THREAD_NGAGE)
 #include "ngage/SDL_systhread_c.h"
 #else
 #error Need thread implementation for this platform
@@ -63,17 +59,17 @@ typedef enum SDL_ThreadState
 /* This is the system-independent thread info structure */
 struct SDL_Thread
 {
-    SDL_threadID threadid;
+    SDL_ThreadID threadid;
     SYS_ThreadHandle handle;
     int status;
-    SDL_atomic_t state; /* SDL_THREAD_STATE_* */
+    SDL_AtomicInt state; /* SDL_THREAD_STATE_* */
     SDL_error errbuf;
     char *name;
     size_t stacksize; /* 0 for default, >0 for user-specified stack size. */
     int(SDLCALL *userfunc)(void *);
     void *userdata;
     void *data;
-    void *endfunc; /* only used on some platforms. */
+    SDL_FunctionPointer endfunc; /* only used on some platforms. */
 };
 
 /* This is the function called to run a thread */
@@ -82,7 +78,7 @@ extern void SDL_RunThread(SDL_Thread *thread);
 /* This is the system-independent thread local storage structure */
 typedef struct
 {
-    unsigned int limit;
+    SDL_TLSID limit;
     struct
     {
         void *data;
@@ -106,5 +102,3 @@ extern SDL_TLSData *SDL_Generic_GetTLSData(void);
 extern int SDL_Generic_SetTLSData(SDL_TLSData *data);
 
 #endif /* SDL_thread_c_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

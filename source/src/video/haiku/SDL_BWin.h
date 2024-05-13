@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -26,9 +26,7 @@
 extern "C" {
 #endif
 
-#include "../../SDL_internal.h"
-#include "SDL.h"
-#include "SDL_syswm.h"
+#include "SDL_internal.h"
 #include "SDL_bframebuffer.h"
 
 #ifdef __cplusplus
@@ -39,11 +37,10 @@ extern "C" {
 #include <AppKit.h>
 #include <Cursor.h>
 #include <InterfaceKit.h>
-#if SDL_VIDEO_OPENGL
+#ifdef SDL_VIDEO_OPENGL
 #include <opengl/GLView.h>
 #endif
-#include "SDL_events.h"
-#include "../../main/haiku/SDL_BApp.h"
+#include "../../core/haiku/SDL_BApp.h"
 
 enum WinCommands
 {
@@ -99,7 +96,7 @@ class SDL_BWin : public BWindow
         _cur_view = NULL;
         _SDL_View = NULL;
 
-#if SDL_VIDEO_OPENGL
+#ifdef SDL_VIDEO_OPENGL
         _SDL_GLView = NULL;
         _gl_type = 0;
 #endif
@@ -123,7 +120,7 @@ class SDL_BWin : public BWindow
             _SDL_View = NULL;
         }
 
-#if SDL_VIDEO_OPENGL
+#ifdef SDL_VIDEO_OPENGL
         if (_SDL_GLView) {
             if (SDL_Looper->GetCurrentContext() == _SDL_GLView)
                 SDL_Looper->SetCurrentContext(NULL);
@@ -156,9 +153,12 @@ class SDL_BWin : public BWindow
 
     void UpdateCurrentView()
     {
+#ifdef SDL_VIDEO_OPENGL
         if (_SDL_GLView != NULL) {
             SetCurrentView(_SDL_GLView);
-        } else if (_SDL_View != NULL) {
+        } else
+#endif
+        if (_SDL_View != NULL) {
             SetCurrentView(_SDL_View);
         } else {
             SetCurrentView(NULL);
@@ -189,7 +189,7 @@ class SDL_BWin : public BWindow
     }
 
     /* * * * * OpenGL functionality * * * * */
-#if SDL_VIDEO_OPENGL
+#ifdef SDL_VIDEO_OPENGL
     BGLView *CreateGLView(Uint32 gl_flags)
     {
         Lock();
@@ -455,10 +455,13 @@ class SDL_BWin : public BWindow
                 delete pendingMessage;
             }
             if (_bitmap != NULL) {
-                if (_SDL_View != NULL && _cur_view == _SDL_View)
-                    _SDL_View->Draw(Bounds());
-                else if (_SDL_GLView != NULL && _cur_view == _SDL_GLView) {
+#ifdef SDL_VIDEO_OPENGL
+                if (_SDL_GLView != NULL && _cur_view == _SDL_GLView) {
                     _SDL_GLView->CopyPixelsIn(_bitmap, B_ORIGIN);
+                } else
+#endif
+                if (_SDL_View != NULL && _cur_view == _SDL_View) {
+                    _SDL_View->Draw(Bounds());
                 }
             }
             break;
@@ -476,7 +479,7 @@ class SDL_BWin : public BWindow
     BBitmap *GetBitmap() { return _bitmap; }
     BView *GetCurView() { return _cur_view; }
     SDL_BView *GetView() { return _SDL_View; }
-#if SDL_VIDEO_OPENGL
+#ifdef SDL_VIDEO_OPENGL
     BGLView *GetGLView()
     {
         return _SDL_GLView;
@@ -712,7 +715,7 @@ class SDL_BWin : public BWindow
 
     BView *_cur_view;
     SDL_BView *_SDL_View;
-#if SDL_VIDEO_OPENGL
+#ifdef SDL_VIDEO_OPENGL
     BGLView *_SDL_GLView;
     Uint32 _gl_type;
 #endif
@@ -750,5 +753,3 @@ class SDL_BWin : public BWindow
  *                         buffer provided by DirectConnected() is invalidated.
  */
 #endif /* SDL_BWin_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

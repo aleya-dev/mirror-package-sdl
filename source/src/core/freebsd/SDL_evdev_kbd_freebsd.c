@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,10 +19,9 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #include "../linux/SDL_evdev_kbd.h"
-#include "SDL_hints.h"
 
 #ifdef SDL_INPUT_FBSDKBIO
 
@@ -78,7 +77,7 @@ static int kbd_cleanup_atexit_installed = 0;
 static struct sigaction old_sigaction[NSIG];
 
 static int fatal_signals[] = {
-    /* Handlers for SIGTERM and SIGINT are installed in SDL_QuitInit. */
+    /* Handlers for SIGTERM and SIGINT are installed in SDL_InitQuit. */
     SIGHUP, SIGQUIT, SIGILL, SIGABRT,
     SIGFPE, SIGSEGV, SIGPIPE, SIGBUS,
     SIGSYS
@@ -88,7 +87,7 @@ static void kbd_cleanup(void)
 {
     struct mouse_info mData;
     SDL_EVDEV_keyboard_state *kbd = kbd_cleanup_state;
-    if (kbd == NULL) {
+    if (!kbd) {
         return;
     }
     kbd_cleanup_state = NULL;
@@ -136,7 +135,7 @@ static void kbd_cleanup_signal_action(int signum, siginfo_t *info, void *ucontex
 
 static void kbd_unregister_emerg_cleanup()
 {
-    int tabidx, signum;
+    int tabidx;
 
     kbd_cleanup_state = NULL;
 
@@ -148,7 +147,7 @@ static void kbd_unregister_emerg_cleanup()
     for (tabidx = 0; tabidx < sizeof(fatal_signals) / sizeof(fatal_signals[0]); ++tabidx) {
         struct sigaction *old_action_p;
         struct sigaction cur_action;
-        signum = fatal_signals[tabidx];
+        int signum = fatal_signals[tabidx];
         old_action_p = &(old_sigaction[signum]);
 
         /* Examine current signal action */
@@ -156,7 +155,7 @@ static void kbd_unregister_emerg_cleanup()
             continue;
         }
 
-        /* Check if action installed and not modifed */
+        /* Check if action installed and not modified */
         if (!(cur_action.sa_flags & SA_SIGINFO) || cur_action.sa_sigaction != &kbd_cleanup_signal_action) {
             continue;
         }
@@ -177,9 +176,9 @@ static void kbd_cleanup_atexit(void)
 
 static void kbd_register_emerg_cleanup(SDL_EVDEV_keyboard_state *kbd)
 {
-    int tabidx, signum;
+    int tabidx;
 
-    if (kbd_cleanup_state != NULL) {
+    if (kbd_cleanup_state) {
         return;
     }
     kbd_cleanup_state = kbd;
@@ -201,7 +200,7 @@ static void kbd_register_emerg_cleanup(SDL_EVDEV_keyboard_state *kbd)
     for (tabidx = 0; tabidx < sizeof(fatal_signals) / sizeof(fatal_signals[0]); ++tabidx) {
         struct sigaction *old_action_p;
         struct sigaction new_action;
-        signum = fatal_signals[tabidx];
+        int signum = fatal_signals[tabidx];
         old_action_p = &(old_sigaction[signum]);
         if (sigaction(signum, NULL, old_action_p)) {
             continue;
@@ -231,7 +230,7 @@ SDL_EVDEV_keyboard_state *SDL_EVDEV_kbd_init(void)
     SDL_zero(mData);
     mData.operation = MOUSE_HIDE;
     kbd = (SDL_EVDEV_keyboard_state *)SDL_calloc(1, sizeof(SDL_EVDEV_keyboard_state));
-    if (kbd == NULL) {
+    if (!kbd) {
         return NULL;
     }
 
@@ -297,7 +296,7 @@ void SDL_EVDEV_kbd_quit(SDL_EVDEV_keyboard_state *kbd)
 {
     struct mouse_info mData;
 
-    if (kbd == NULL) {
+    if (!kbd) {
         return;
     }
     SDL_zero(mData);
@@ -319,6 +318,18 @@ void SDL_EVDEV_kbd_quit(SDL_EVDEV_keyboard_state *kbd)
     }
 
     SDL_free(kbd);
+}
+
+void SDL_EVDEV_kbd_set_muted(SDL_EVDEV_keyboard_state *state, SDL_bool muted)
+{
+}
+
+void SDL_EVDEV_kbd_set_vt_switch_callbacks(SDL_EVDEV_keyboard_state *state, void (*release_callback)(void*), void *release_callback_data, void (*acquire_callback)(void*), void *acquire_callback_data)
+{
+}
+
+void SDL_EVDEV_kbd_update(SDL_EVDEV_keyboard_state *state)
+{
 }
 
 /*
@@ -475,7 +486,7 @@ void SDL_EVDEV_kbd_keycode(SDL_EVDEV_keyboard_state *kbd, unsigned int keycode, 
     unsigned int final_key_state;
     unsigned int map_from_key_sym;
 
-    if (kbd == NULL) {
+    if (!kbd) {
         return;
     }
 
@@ -531,6 +542,7 @@ void SDL_EVDEV_kbd_keycode(SDL_EVDEV_keyboard_state *kbd, unsigned int keycode, 
                 if (down == 0) {
                     chg_vc_kbd_led(kbd, ALKED);
                 }
+                SDL_FALLTHROUGH;
             case LSH: /* left shift */
             case RSH: /* right shift */
                 k_shift(kbd, 0, down == 0);
@@ -540,6 +552,7 @@ void SDL_EVDEV_kbd_keycode(SDL_EVDEV_keyboard_state *kbd, unsigned int keycode, 
                 if (down == 0) {
                     chg_vc_kbd_led(kbd, ALKED);
                 }
+                SDL_FALLTHROUGH;
             case LCTR: /* left ctrl */
             case RCTR: /* right ctrl */
                 k_shift(kbd, 1, down == 0);
@@ -549,6 +562,7 @@ void SDL_EVDEV_kbd_keycode(SDL_EVDEV_keyboard_state *kbd, unsigned int keycode, 
                 if (down == 0) {
                     chg_vc_kbd_led(kbd, ALKED);
                 }
+                SDL_FALLTHROUGH;
             case LALT: /* left alt */
             case RALT: /* right alt */
                 k_shift(kbd, 2, down == 0);
@@ -597,5 +611,3 @@ void SDL_EVDEV_kbd_keycode(SDL_EVDEV_keyboard_state *kbd, unsigned int keycode, 
 }
 
 #endif /* SDL_INPUT_FBSDKBIO */
-
-/* vi: set ts=4 sw=4 expandtab: */

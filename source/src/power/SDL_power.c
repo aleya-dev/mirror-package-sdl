@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,8 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../SDL_internal.h"
-#include "SDL_power.h"
+#include "SDL_internal.h"
 #include "SDL_syspower.h"
 
 /*
@@ -54,7 +53,7 @@ static SDL_GetPowerInfo_Impl implementations[] = {
 #ifdef SDL_POWER_UIKIT /* handles iPhone/iPad/etc */
     SDL_GetPowerInfo_UIKit,
 #endif
-#ifdef SDL_POWER_MACOSX         /* handles Mac OS X, Darwin. */
+#ifdef SDL_POWER_MACOSX /* handles macOS, Darwin. */
     SDL_GetPowerInfo_MacOSX,
 #endif
 #ifdef SDL_POWER_HAIKU /* with BeOS euc.jp apm driver. Does this work on Haiku? */
@@ -95,10 +94,10 @@ SDL_PowerState SDL_GetPowerInfo(int *seconds, int *percent)
 
     int _seconds, _percent;
     /* Make these never NULL for platform-specific implementations. */
-    if (seconds == NULL) {
+    if (!seconds) {
         seconds = &_seconds;
     }
-    if (percent == NULL) {
+    if (!percent) {
         percent = &_percent;
     }
 
@@ -115,5 +114,3 @@ SDL_PowerState SDL_GetPowerInfo(int *seconds, int *percent)
     *percent = -1;
     return SDL_POWERSTATE_UNKNOWN;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

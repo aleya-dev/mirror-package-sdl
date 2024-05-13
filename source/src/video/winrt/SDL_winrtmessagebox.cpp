@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,12 +18,11 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_WINRT
+#ifdef SDL_VIDEO_DRIVER_WINRT
 
 extern "C" {
-#include "SDL_messagebox.h"
 #include "../../core/windows/SDL_windows.h"
 }
 
@@ -41,9 +40,9 @@ static String ^ WINRT_UTF8ToPlatformString(const char *str) {
     return rtstr;
 }
 
-    extern "C" int WINRT_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
+extern "C" int WINRT_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
 {
-#if (WINAPI_FAMILY == WINAPI_FAMILY_PHONE_APP) && (NTDDI_VERSION == NTDDI_WIN8)
+#if SDL_WINAPI_FAMILY_PHONE && NTDDI_VERSION == NTDDI_WIN8
     /* Sadly, Windows Phone 8 doesn't include the MessageDialog class that
      * Windows 8.x/RT does, even though MSDN's reference documentation for
      * Windows Phone 8 mentions it.
@@ -55,7 +54,7 @@ static String ^ WINRT_UTF8ToPlatformString(const char *str) {
 #else
     SDL_VideoDevice *_this = SDL_GetVideoDevice();
 
-#if WINAPI_FAMILY == WINAPI_FAMILY_PHONE_APP
+#if SDL_WINAPI_FAMILY_PHONE
     const int maxbuttons = 2;
     const char *platform = "Windows Phone 8.1+";
 #else
@@ -100,15 +99,13 @@ static String ^ WINRT_UTF8ToPlatformString(const char *str) {
     if (operation->Status != Windows::Foundation::AsyncStatus::Completed) {
         return SDL_SetError("An unknown error occurred in displaying the WinRT MessageDialog");
     }
-    if (buttonid) {
+    if (buttonID) {
         IntPtr results = safe_cast<IntPtr>(operation->GetResults()->Id);
         int clicked_index = results.ToInt32();
-        *buttonid = messageboxdata->buttons[clicked_index].buttonid;
+        *buttonID = messageboxdata->buttons[clicked_index].buttonID;
     }
     return 0;
-#endif /* if WINAPI_FAMILY == WINAPI_FAMILY_PHONE_APP / else */
+#endif /* if SDL_WINAPI_FAMILY_PHONE / else */
 }
 
 #endif /* SDL_VIDEO_DRIVER_WINRT */
-
-/* vi: set ts=4 sw=4 expandtab: */

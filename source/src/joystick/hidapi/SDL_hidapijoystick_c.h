@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,17 +18,11 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_JOYSTICK_HIDAPI_H
 #define SDL_JOYSTICK_HIDAPI_H
 
-#include "SDL_atomic.h"
-#include "SDL_hints.h"
-#include "SDL_mutex.h"
-#include "SDL_joystick.h"
-#include "SDL_gamecontroller.h"
-#include "SDL_hidapi.h"
 #include "../usb_ids.h"
 
 /* This is the full set of HIDAPI drivers available */
@@ -39,25 +33,43 @@
 #define SDL_JOYSTICK_HIDAPI_PS5
 #define SDL_JOYSTICK_HIDAPI_STADIA
 #define SDL_JOYSTICK_HIDAPI_STEAM /* Simple support for BLE Steam Controller, hint is disabled by default */
+#define SDL_JOYSTICK_HIDAPI_STEAMDECK
 #define SDL_JOYSTICK_HIDAPI_SWITCH
 #define SDL_JOYSTICK_HIDAPI_WII
 #define SDL_JOYSTICK_HIDAPI_XBOX360
 #define SDL_JOYSTICK_HIDAPI_XBOXONE
 #define SDL_JOYSTICK_HIDAPI_SHIELD
 
+/* Joystick capability definitions */
+#define SDL_JOYSTICK_CAP_MONO_LED       0x00000001
+#define SDL_JOYSTICK_CAP_RGB_LED        0x00000002
+#define SDL_JOYSTICK_CAP_PLAYER_LED     0x00000004
+#define SDL_JOYSTICK_CAP_RUMBLE         0x00000010
+#define SDL_JOYSTICK_CAP_TRIGGER_RUMBLE 0x00000020
+
 /* Whether HIDAPI is enabled by default */
+#if defined(SDL_PLATFORM_ANDROID) || \
+    defined(SDL_PLATFORM_IOS) || \
+    defined(SDL_PLATFORM_TVOS) || \
+    defined(SDL_PLATFORM_VISIONOS)
+/* On Android, HIDAPI prompts for permissions and acquires exclusive access to the device, and on Apple mobile platforms it doesn't do anything except for handling Bluetooth Steam Controllers, so we'll leave it off by default. */
+#define SDL_HIDAPI_DEFAULT SDL_FALSE
+#else
 #define SDL_HIDAPI_DEFAULT SDL_TRUE
+#endif
 
 /* The maximum size of a USB packet for HID devices */
 #define USB_PACKET_LENGTH 64
 
 /* Forward declaration */
-struct _SDL_HIDAPI_DeviceDriver;
+struct SDL_HIDAPI_DeviceDriver;
 
-typedef struct _SDL_HIDAPI_Device
+typedef struct SDL_HIDAPI_Device
 {
     const void *magic;
     char *name;
+    char *manufacturer_string;
+    char *product_string;
     char *path;
     Uint16 vendor_id;
     Uint16 product_id;
@@ -68,17 +80,17 @@ typedef struct _SDL_HIDAPI_Device
     int interface_class;
     int interface_subclass;
     int interface_protocol;
-    Uint16 usage_page;      /* Available on Windows and Mac OS X */
-    Uint16 usage;           /* Available on Windows and Mac OS X */
+    Uint16 usage_page; /* Available on Windows and macOS */
+    Uint16 usage;      /* Available on Windows and macOS */
     SDL_bool is_bluetooth;
     SDL_JoystickType joystick_type;
-    SDL_GameControllerType type;
+    SDL_GamepadType type;
 
-    struct _SDL_HIDAPI_DeviceDriver *driver;
+    struct SDL_HIDAPI_DeviceDriver *driver;
     void *context;
-    SDL_mutex *dev_lock;
+    SDL_Mutex *dev_lock;
     SDL_hid_device *dev;
-    SDL_atomic_t rumble_pending;
+    SDL_AtomicInt rumble_pending;
     int num_joysticks;
     SDL_JoystickID *joysticks;
 
@@ -88,21 +100,21 @@ typedef struct _SDL_HIDAPI_Device
     /* Used to flag that the device is being updated */
     SDL_bool updating;
 
-    struct _SDL_HIDAPI_Device *parent;
+    struct SDL_HIDAPI_Device *parent;
     int num_children;
-    struct _SDL_HIDAPI_Device **children;
+    struct SDL_HIDAPI_Device **children;
 
-    struct _SDL_HIDAPI_Device *next;
+    struct SDL_HIDAPI_Device *next;
 } SDL_HIDAPI_Device;
 
-typedef struct _SDL_HIDAPI_DeviceDriver
+typedef struct SDL_HIDAPI_DeviceDriver
 {
     const char *name;
     SDL_bool enabled;
     void (*RegisterHints)(SDL_HintCallback callback, void *userdata);
     void (*UnregisterHints)(SDL_HintCallback callback, void *userdata);
     SDL_bool (*IsEnabled)(void);
-    SDL_bool (*IsSupportedDevice)(SDL_HIDAPI_Device *device, const char *name, SDL_GameControllerType type, Uint16 vendor_id, Uint16 product_id, Uint16 version, int interface_number, int interface_class, int interface_subclass, int interface_protocol);
+    SDL_bool (*IsSupportedDevice)(SDL_HIDAPI_Device *device, const char *name, SDL_GamepadType type, Uint16 vendor_id, Uint16 product_id, Uint16 version, int interface_number, int interface_class, int interface_subclass, int interface_protocol);
     SDL_bool (*InitDevice)(SDL_HIDAPI_Device *device);
     int (*GetDevicePlayerIndex)(SDL_HIDAPI_Device *device, SDL_JoystickID instance_id);
     void (*SetDevicePlayerIndex)(SDL_HIDAPI_Device *device, SDL_JoystickID instance_id, int player_index);
@@ -127,11 +139,13 @@ extern SDL_HIDAPI_DeviceDriver SDL_HIDAPI_DriverLuna;
 extern SDL_HIDAPI_DeviceDriver SDL_HIDAPI_DriverNintendoClassic;
 extern SDL_HIDAPI_DeviceDriver SDL_HIDAPI_DriverPS3;
 extern SDL_HIDAPI_DeviceDriver SDL_HIDAPI_DriverPS3ThirdParty;
+extern SDL_HIDAPI_DeviceDriver SDL_HIDAPI_DriverPS3SonySixaxis;
 extern SDL_HIDAPI_DeviceDriver SDL_HIDAPI_DriverPS4;
 extern SDL_HIDAPI_DeviceDriver SDL_HIDAPI_DriverPS5;
 extern SDL_HIDAPI_DeviceDriver SDL_HIDAPI_DriverShield;
 extern SDL_HIDAPI_DeviceDriver SDL_HIDAPI_DriverStadia;
 extern SDL_HIDAPI_DeviceDriver SDL_HIDAPI_DriverSteam;
+extern SDL_HIDAPI_DeviceDriver SDL_HIDAPI_DriverSteamDeck;
 extern SDL_HIDAPI_DeviceDriver SDL_HIDAPI_DriverSwitch;
 extern SDL_HIDAPI_DeviceDriver SDL_HIDAPI_DriverWii;
 extern SDL_HIDAPI_DeviceDriver SDL_HIDAPI_DriverXbox360;
@@ -139,7 +153,7 @@ extern SDL_HIDAPI_DeviceDriver SDL_HIDAPI_DriverXbox360W;
 extern SDL_HIDAPI_DeviceDriver SDL_HIDAPI_DriverXboxOne;
 
 /* Return true if a HID device is present and supported as a joystick of the given type */
-extern SDL_bool HIDAPI_IsDeviceTypePresent(SDL_GameControllerType type);
+extern SDL_bool HIDAPI_IsDeviceTypePresent(SDL_GamepadType type);
 
 /* Return true if a HID device is present and supported as a joystick */
 extern SDL_bool HIDAPI_IsDevicePresent(Uint16 vendor_id, Uint16 product_id, Uint16 version, const char *name);
@@ -148,7 +162,7 @@ extern SDL_bool HIDAPI_IsDevicePresent(Uint16 vendor_id, Uint16 product_id, Uint
 extern SDL_JoystickType HIDAPI_GetJoystickTypeFromGUID(SDL_JoystickGUID guid);
 
 /* Return the type of a game controller if it's present and supported */
-extern SDL_GameControllerType HIDAPI_GetGameControllerTypeFromGUID(SDL_JoystickGUID guid);
+extern SDL_GamepadType HIDAPI_GetGamepadTypeFromGUID(SDL_JoystickGUID guid);
 
 extern void HIDAPI_UpdateDevices(void);
 extern void HIDAPI_SetDeviceName(SDL_HIDAPI_Device *device, const char *name);
@@ -158,6 +172,7 @@ extern SDL_bool HIDAPI_HasConnectedUSBDevice(const char *serial);
 extern void HIDAPI_DisconnectBluetoothDevice(const char *serial);
 extern SDL_bool HIDAPI_JoystickConnected(SDL_HIDAPI_Device *device, SDL_JoystickID *pJoystickID);
 extern void HIDAPI_JoystickDisconnected(SDL_HIDAPI_Device *device, SDL_JoystickID joystickID);
+extern void HIDAPI_UpdateDeviceProperties(SDL_HIDAPI_Device *device);
 
 extern void HIDAPI_DumpPacket(const char *prefix, const Uint8 *data, int size);
 
@@ -166,5 +181,3 @@ extern SDL_bool HIDAPI_SupportsPlaystationDetection(Uint16 vendor, Uint16 produc
 extern float HIDAPI_RemapVal(float val, float val_min, float val_max, float output_min, float output_max);
 
 #endif /* SDL_JOYSTICK_HIDAPI_H */
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -12,17 +12,21 @@
 
 /* Simple test of the SDL MessageBox API */
 
-#include <stdio.h>
 #include <stdlib.h>
 
-#include "SDL.h"
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+#include <SDL3/SDL_test.h>
 
 /* Call this instead of exit(), so we can clean up SDL: atexit() is evil. */
 static void
 quit(int rc)
 {
     SDL_Quit();
-    exit(rc);
+    /* Let 'main()' return normally */
+    if (rc != 0) {
+        exit(rc);
+    }
 }
 
 static int SDLCALL
@@ -81,9 +85,21 @@ button_messagebox(void *eventNumber)
 int main(int argc, char *argv[])
 {
     int success;
+    SDLTest_CommonState *state;
+
+    /* Initialize test framework */
+    state = SDLTest_CommonCreateState(argv, 0);
+    if (!state) {
+        return 1;
+    }
 
     /* Enable standard application logging */
     SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
+
+    /* Parse commandline */
+    if (!SDLTest_CommonDefaultArgs(state, argc, argv)) {
+        return 1;
+    }
 
     success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
                                        "Simple MessageBox",
@@ -155,7 +171,7 @@ int main(int argc, char *argv[])
 
     /* Test showing a message box from a background thread.
 
-       On Mac OS X, the video subsystem needs to be initialized for this
+       On macOS, the video subsystem needs to be initialized for this
        to work, since the message box events are dispatched by the Cocoa
        subsystem on the main thread.
      */
@@ -166,8 +182,8 @@ int main(int argc, char *argv[])
     {
         int status = 0;
         SDL_Event event;
-        intptr_t eventNumber = SDL_RegisterEvents(1);
-        SDL_Thread *thread = SDL_CreateThread(&button_messagebox, "MessageBox", (void *)eventNumber);
+        Uint32 eventNumber = SDL_RegisterEvents(1);
+        SDL_Thread *thread = SDL_CreateThread(&button_messagebox, "MessageBox", (void *)(uintptr_t)eventNumber);
 
         while (SDL_WaitEvent(&event)) {
             if (event.type == eventNumber) {
@@ -183,12 +199,12 @@ int main(int argc, char *argv[])
     /* Test showing a message box with a parent window */
     {
         SDL_Event event;
-        SDL_Window *window = SDL_CreateWindow("Test", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, 0);
+        SDL_Window *window = SDL_CreateWindow("Test", 640, 480, 0);
 
         /* On wayland, no window will actually show until something has
            actually been displayed.
         */
-        SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, 0);
+        SDL_Renderer *renderer = SDL_CreateRenderer(window, NULL, 0);
         SDL_RenderPresent(renderer);
 
         success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
@@ -201,12 +217,13 @@ int main(int argc, char *argv[])
         }
 
         while (SDL_WaitEvent(&event)) {
-            if (event.type == SDL_QUIT || event.type == SDL_KEYUP) {
+            if (event.type == SDL_EVENT_QUIT || event.type == SDL_EVENT_KEY_UP) {
                 break;
             }
         }
     }
 
     SDL_Quit();
+    SDLTest_CommonDestroyState(state);
     return 0;
 }

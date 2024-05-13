@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -15,24 +15,28 @@
    pump the event loop and catch keystrokes.
 */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+#include <SDL3/SDL_test.h>
 
-#ifdef __EMSCRIPTEN__
+#ifdef SDL_PLATFORM_EMSCRIPTEN
 #include <emscripten/emscripten.h>
 #endif
 
-#include "SDL.h"
+#include <stdio.h>
+#include <stdlib.h>
 
-int done;
+static int done;
 
 /* Call this instead of exit(), so we can clean up SDL: atexit() is evil. */
 static void
 quit(int rc)
 {
     SDL_Quit();
-    exit(rc);
+    /* Let 'main()' return normally */
+    if (rc != 0) {
+        exit(rc);
+    }
 }
 
 static void
@@ -64,46 +68,46 @@ print_modifiers(char **text, size_t *maxlen)
         print_string(text, maxlen, " (none)");
         return;
     }
-    if (mod & KMOD_LSHIFT) {
+    if (mod & SDL_KMOD_LSHIFT) {
         print_string(text, maxlen, " LSHIFT");
     }
-    if (mod & KMOD_RSHIFT) {
+    if (mod & SDL_KMOD_RSHIFT) {
         print_string(text, maxlen, " RSHIFT");
     }
-    if (mod & KMOD_LCTRL) {
+    if (mod & SDL_KMOD_LCTRL) {
         print_string(text, maxlen, " LCTRL");
     }
-    if (mod & KMOD_RCTRL) {
+    if (mod & SDL_KMOD_RCTRL) {
         print_string(text, maxlen, " RCTRL");
     }
-    if (mod & KMOD_LALT) {
+    if (mod & SDL_KMOD_LALT) {
         print_string(text, maxlen, " LALT");
     }
-    if (mod & KMOD_RALT) {
+    if (mod & SDL_KMOD_RALT) {
         print_string(text, maxlen, " RALT");
     }
-    if (mod & KMOD_LGUI) {
+    if (mod & SDL_KMOD_LGUI) {
         print_string(text, maxlen, " LGUI");
     }
-    if (mod & KMOD_RGUI) {
+    if (mod & SDL_KMOD_RGUI) {
         print_string(text, maxlen, " RGUI");
     }
-    if (mod & KMOD_NUM) {
+    if (mod & SDL_KMOD_NUM) {
         print_string(text, maxlen, " NUM");
     }
-    if (mod & KMOD_CAPS) {
+    if (mod & SDL_KMOD_CAPS) {
         print_string(text, maxlen, " CAPS");
     }
-    if (mod & KMOD_MODE) {
+    if (mod & SDL_KMOD_MODE) {
         print_string(text, maxlen, " MODE");
     }
-    if (mod & KMOD_SCROLL) {
+    if (mod & SDL_KMOD_SCROLL) {
         print_string(text, maxlen, " SCROLL");
     }
 }
 
 static void
-PrintModifierState()
+PrintModifierState(void)
 {
     char message[512];
     char *spot;
@@ -162,7 +166,7 @@ PrintText(const char *eventtype, const char *text)
     SDL_Log("%s Text (%s): \"%s%s\"\n", eventtype, expanded, *text == '"' ? "\\" : "", text);
 }
 
-void loop()
+static void loop(void)
 {
     SDL_Event event;
     /* Check for events */
@@ -170,28 +174,27 @@ void loop()
 
     (void)fprintf(stderr, "starting loop\n");
     (void)fflush(stderr);
-    // while (SDL_PollEvent(&event)) {
     while (!done && SDL_WaitEvent(&event)) {
         SDL_Log("Got event type: %" SDL_PRIu32 "\n", event.type);
         switch (event.type) {
-        case SDL_KEYDOWN:
-        case SDL_KEYUP:
-            PrintKey(&event.key.keysym, (event.key.state == SDL_PRESSED) ? SDL_TRUE : SDL_FALSE, (event.key.repeat) ? SDL_TRUE : SDL_FALSE);
+        case SDL_EVENT_KEY_DOWN:
+        case SDL_EVENT_KEY_UP:
+            PrintKey(&event.key.keysym, (event.key.state == SDL_PRESSED), (event.key.repeat > 0));
             break;
-        case SDL_TEXTEDITING:
+        case SDL_EVENT_TEXT_EDITING:
             PrintText("EDIT", event.text.text);
             break;
-        case SDL_TEXTINPUT:
+        case SDL_EVENT_TEXT_INPUT:
             PrintText("INPUT", event.text.text);
             break;
-        case SDL_MOUSEBUTTONDOWN:
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
             /* Left button quits the app, other buttons toggles text input */
             (void)fprintf(stderr, "mouse button down button: %d (LEFT=%d)\n", event.button.button, SDL_BUTTON_LEFT);
             (void)fflush(stderr);
             if (event.button.button == SDL_BUTTON_LEFT) {
                 done = 1;
             } else {
-                if (SDL_IsTextInputActive()) {
+                if (SDL_TextInputActive()) {
                     SDL_Log("Stopping text input\n");
                     SDL_StopTextInput();
                 } else {
@@ -200,7 +203,7 @@ void loop()
                 }
             }
             break;
-        case SDL_QUIT:
+        case SDL_EVENT_QUIT:
             done = 1;
             break;
         default:
@@ -211,7 +214,7 @@ void loop()
     }
     (void)fprintf(stderr, "exiting event loop\n");
     (void)fflush(stderr);
-#ifdef __EMSCRIPTEN__
+#ifdef SDL_PLATFORM_EMSCRIPTEN
     if (done) {
         emscripten_cancel_main_loop();
     }
@@ -227,7 +230,7 @@ static int SDLCALL ping_thread(void *ptr)
     for (cnt = 0; cnt < 10; ++cnt) {
         (void)fprintf(stderr, "sending event (%d/%d) from thread.\n", cnt + 1, 10);
         (void)fflush(stderr);
-        sdlevent.type = SDL_KEYDOWN;
+        sdlevent.type = SDL_EVENT_KEY_DOWN;
         sdlevent.key.keysym.sym = SDLK_1;
         SDL_PushEvent(&sdlevent);
         SDL_Delay(1000 + rand() % 1000);
@@ -240,9 +243,21 @@ int main(int argc, char *argv[])
     SDL_Window *window;
     SDL_Renderer *renderer;
     SDL_Thread *thread;
+    SDLTest_CommonState *state;
+
+    /* Initialize test framework */
+    state = SDLTest_CommonCreateState(argv, 0);
+    if (!state) {
+        return 1;
+    }
 
     /* Enable standard application logging */
     SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
+
+    /* Parse commandline */
+    if (!SDLTest_CommonDefaultArgs(state, argc, argv)) {
+        return 1;
+    }
 
     /* Initialize SDL */
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -251,10 +266,8 @@ int main(int argc, char *argv[])
     }
 
     /* Set 640x480 video mode */
-    window = SDL_CreateWindow("CheckKeys Test",
-                              SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                              640, 480, 0);
-    if (window == NULL) {
+    window = SDL_CreateWindow("CheckKeys Test", 640, 480, 0);
+    if (!window) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create 640x480 window: %s\n",
                      SDL_GetError());
         quit(2);
@@ -263,10 +276,10 @@ int main(int argc, char *argv[])
     /* On wayland, no window will actually show until something has
        actually been displayed.
     */
-    renderer = SDL_CreateRenderer(window, -1, 0);
+    renderer = SDL_CreateRenderer(window, NULL, 0);
     SDL_RenderPresent(renderer);
 
-#if __IPHONEOS__
+#ifdef SDL_PLATFORM_IOS
     /* Creating the context creates the view, which we need to show keyboard */
     SDL_GL_CreateContext(window);
 #endif
@@ -282,7 +295,7 @@ int main(int argc, char *argv[])
 
     thread = SDL_CreateThread(ping_thread, "PingThread", NULL);
 
-#ifdef __EMSCRIPTEN__
+#ifdef SDL_PLATFORM_EMSCRIPTEN
     emscripten_set_main_loop(loop, 0, 1);
 #else
     while (!done) {
@@ -290,9 +303,11 @@ int main(int argc, char *argv[])
     }
 #endif
 
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+
     SDL_WaitThread(thread, NULL);
     SDL_Quit();
+    SDLTest_CommonDestroyState(state);
     return 0;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

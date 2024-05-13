@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,18 +18,16 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #include "SDL_androidvideo.h"
 
 extern int Android_OnKeyDown(int keycode);
 extern int Android_OnKeyUp(int keycode);
 
-extern SDL_bool Android_HasScreenKeyboardSupport(_THIS);
-extern SDL_bool Android_IsScreenKeyboardShown(_THIS, SDL_Window *window);
-
-extern void Android_StartTextInput(_THIS);
-extern void Android_StopTextInput(_THIS);
-extern void Android_SetTextInputRect(_THIS, const SDL_Rect *rect);
-
-/* vi: set ts=4 sw=4 expandtab: */
+extern SDL_bool Android_HasScreenKeyboardSupport(SDL_VideoDevice *_this);
+extern void Android_ShowScreenKeyboard(SDL_VideoDevice *_this, SDL_Window *window);
+extern void Android_HideScreenKeyboard(SDL_VideoDevice *_this, SDL_Window *window);
+extern void Android_RestoreScreenKeyboardOnResume(SDL_VideoDevice *_this, SDL_Window *window);
+extern SDL_bool Android_IsScreenKeyboardShown(SDL_VideoDevice *_this, SDL_Window *window);
+extern int Android_SetTextInputRect(SDL_VideoDevice *_this, const SDL_Rect *rect);

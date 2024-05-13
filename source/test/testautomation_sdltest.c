@@ -3,31 +3,18 @@
  */
 
 #include <limits.h>
-/* Visual Studio 2008 doesn't have stdint.h */
-#if defined(_MSC_VER) && _MSC_VER <= 1500
-#define UINT8_MAX   _UI8_MAX
-#define UINT16_MAX  _UI16_MAX
-#define UINT32_MAX  _UI32_MAX
-#define INT64_MIN    _I64_MIN
-#define INT64_MAX    _I64_MAX
-#define UINT64_MAX  _UI64_MAX
-#else
-#include <stdint.h>
-#endif
-
-#include <stdio.h>
 #include <float.h>
-#include <ctype.h>
 
-#include "SDL.h"
-#include "SDL_test.h"
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_test.h>
+#include "testautomation_suites.h"
 
 /* Test case functions */
 
 /**
- * @brief Calls to SDLTest_GenerateRunSeed()
+ * Calls to SDLTest_GenerateRunSeed()
  */
-int sdltest_generateRunSeed(void *arg)
+static int sdltest_generateRunSeed(void *arg)
 {
     char *result;
     size_t i, l;
@@ -55,9 +42,9 @@ int sdltest_generateRunSeed(void *arg)
 }
 
 /**
- * @brief Calls to SDLTest_GetFuzzerInvocationCount()
+ * Calls to SDLTest_GetFuzzerInvocationCount()
  */
-int sdltest_getFuzzerInvocationCount(void *arg)
+static int sdltest_getFuzzerInvocationCount(void *arg)
 {
     Uint8 result;
     int fuzzerCount1, fuzzerCount2;
@@ -77,9 +64,9 @@ int sdltest_getFuzzerInvocationCount(void *arg)
 }
 
 /**
- * @brief Calls to random number generators
+ * Calls to random number generators
  */
-int sdltest_randomNumber(void *arg)
+static int sdltest_randomNumber(void *arg)
 {
     Sint64 result;
     double dresult;
@@ -143,13 +130,13 @@ int sdltest_randomNumber(void *arg)
     return TEST_COMPLETED;
 }
 
-/*
- * @brief Calls to random boundary number generators for Uint8
+/**
+ * Calls to random boundary number generators for Uint8
  */
-int sdltest_randomBoundaryNumberUint8(void *arg)
+static int sdltest_randomBoundaryNumberUint8(void *arg)
 {
     const char *expectedError = "That operation is not supported";
-    char *lastError;
+    const char *lastError;
     Uint64 uresult;
 
     /* Clean error messages */
@@ -218,7 +205,7 @@ int sdltest_randomBoundaryNumberUint8(void *arg)
     SDLTest_AssertCheck(
         uresult == 0,
         "Validate result value for parameters (1,255,SDL_FALSE); expected: 0, got: %" SDL_PRIs64, uresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError == NULL || lastError[0] == '\0', "Validate no error message was set");
 
@@ -228,7 +215,7 @@ int sdltest_randomBoundaryNumberUint8(void *arg)
     SDLTest_AssertCheck(
         uresult == 0xff,
         "Validate result value for parameters (0,254,SDL_FALSE); expected: 0xff, got: %" SDL_PRIs64, uresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError == NULL || lastError[0] == '\0', "Validate no error message was set");
 
@@ -238,7 +225,7 @@ int sdltest_randomBoundaryNumberUint8(void *arg)
     SDLTest_AssertCheck(
         uresult == 0,
         "Validate result value for parameters(0,255,SDL_FALSE); expected: 0, got: %" SDL_PRIs64, uresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError != NULL && SDL_strcmp(lastError, expectedError) == 0,
                         "SDL_GetError(): expected message '%s', was message: '%s'",
@@ -252,13 +239,13 @@ int sdltest_randomBoundaryNumberUint8(void *arg)
     return TEST_COMPLETED;
 }
 
-/*
- * @brief Calls to random boundary number generators for Uint16
+/**
+ * Calls to random boundary number generators for Uint16
  */
-int sdltest_randomBoundaryNumberUint16(void *arg)
+static int sdltest_randomBoundaryNumberUint16(void *arg)
 {
     const char *expectedError = "That operation is not supported";
-    char *lastError;
+    const char *lastError;
     Uint64 uresult;
 
     /* Clean error messages */
@@ -327,7 +314,7 @@ int sdltest_randomBoundaryNumberUint16(void *arg)
     SDLTest_AssertCheck(
         uresult == 0,
         "Validate result value for parameters (1,0xffff,SDL_FALSE); expected: 0, got: %" SDL_PRIs64, uresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError == NULL || lastError[0] == '\0', "Validate no error message was set");
 
@@ -337,7 +324,7 @@ int sdltest_randomBoundaryNumberUint16(void *arg)
     SDLTest_AssertCheck(
         uresult == 0xffff,
         "Validate result value for parameters (0,0xfffe,SDL_FALSE); expected: 0xffff, got: %" SDL_PRIs64, uresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError == NULL || lastError[0] == '\0', "Validate no error message was set");
 
@@ -347,7 +334,7 @@ int sdltest_randomBoundaryNumberUint16(void *arg)
     SDLTest_AssertCheck(
         uresult == 0,
         "Validate result value for parameters(0,0xffff,SDL_FALSE); expected: 0, got: %" SDL_PRIs64, uresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError != NULL && SDL_strcmp(lastError, expectedError) == 0,
                         "SDL_GetError(): expected message '%s', was message: '%s'",
@@ -361,13 +348,13 @@ int sdltest_randomBoundaryNumberUint16(void *arg)
     return TEST_COMPLETED;
 }
 
-/*
- * @brief Calls to random boundary number generators for Uint32
+/**
+ * Calls to random boundary number generators for Uint32
  */
-int sdltest_randomBoundaryNumberUint32(void *arg)
+static int sdltest_randomBoundaryNumberUint32(void *arg)
 {
     const char *expectedError = "That operation is not supported";
-    char *lastError;
+    const char *lastError;
     Uint64 uresult;
 
     /* Clean error messages */
@@ -436,7 +423,7 @@ int sdltest_randomBoundaryNumberUint32(void *arg)
     SDLTest_AssertCheck(
         uresult == 0,
         "Validate result value for parameters (1,0xffffffff,SDL_FALSE); expected: 0, got: %" SDL_PRIs64, uresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError == NULL || lastError[0] == '\0', "Validate no error message was set");
 
@@ -446,7 +433,7 @@ int sdltest_randomBoundaryNumberUint32(void *arg)
     SDLTest_AssertCheck(
         uresult == 0xffffffff,
         "Validate result value for parameters (0,0xfffffffe,SDL_FALSE); expected: 0xffffffff, got: %" SDL_PRIs64, uresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError == NULL || lastError[0] == '\0', "Validate no error message was set");
 
@@ -456,7 +443,7 @@ int sdltest_randomBoundaryNumberUint32(void *arg)
     SDLTest_AssertCheck(
         uresult == 0,
         "Validate result value for parameters(0,0xffffffff,SDL_FALSE); expected: 0, got: %" SDL_PRIs64, uresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError != NULL && SDL_strcmp(lastError, expectedError) == 0,
                         "SDL_GetError(): expected message '%s', was message: '%s'",
@@ -470,13 +457,13 @@ int sdltest_randomBoundaryNumberUint32(void *arg)
     return TEST_COMPLETED;
 }
 
-/*
- * @brief Calls to random boundary number generators for Uint64
+/**
+ * Calls to random boundary number generators for Uint64
  */
-int sdltest_randomBoundaryNumberUint64(void *arg)
+static int sdltest_randomBoundaryNumberUint64(void *arg)
 {
     const char *expectedError = "That operation is not supported";
-    char *lastError;
+    const char *lastError;
     Uint64 uresult;
 
     /* Clean error messages */
@@ -545,7 +532,7 @@ int sdltest_randomBoundaryNumberUint64(void *arg)
     SDLTest_AssertCheck(
         uresult == 0,
         "Validate result value for parameters (1,0xffffffffffffffff,SDL_FALSE); expected: 0, got: %" SDL_PRIs64, uresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError == NULL || lastError[0] == '\0', "Validate no error message was set");
 
@@ -555,7 +542,7 @@ int sdltest_randomBoundaryNumberUint64(void *arg)
     SDLTest_AssertCheck(
         uresult == 0xffffffffffffffffULL,
         "Validate result value for parameters (0,0xfffffffffffffffe,SDL_FALSE); expected: 0xffffffffffffffff, got: %" SDL_PRIs64, uresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError == NULL || lastError[0] == '\0', "Validate no error message was set");
 
@@ -565,7 +552,7 @@ int sdltest_randomBoundaryNumberUint64(void *arg)
     SDLTest_AssertCheck(
         uresult == 0,
         "Validate result value for parameters(0,0xffffffffffffffff,SDL_FALSE); expected: 0, got: %" SDL_PRIs64, uresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError != NULL && SDL_strcmp(lastError, expectedError) == 0,
                         "SDL_GetError(): expected message '%s', was message: '%s'",
@@ -579,13 +566,13 @@ int sdltest_randomBoundaryNumberUint64(void *arg)
     return TEST_COMPLETED;
 }
 
-/*
- * @brief Calls to random boundary number generators for Sint8
+/**
+ * Calls to random boundary number generators for Sint8
  */
-int sdltest_randomBoundaryNumberSint8(void *arg)
+static int sdltest_randomBoundaryNumberSint8(void *arg)
 {
     const char *expectedError = "That operation is not supported";
-    char *lastError;
+    const char *lastError;
     Sint64 sresult;
 
     /* Clean error messages */
@@ -654,7 +641,7 @@ int sdltest_randomBoundaryNumberSint8(void *arg)
     SDLTest_AssertCheck(
         sresult == SCHAR_MIN,
         "Validate result value for parameters (SCHAR_MIN + 1,SCHAR_MAX,SDL_FALSE); expected: %d, got: %" SDL_PRIs64, SCHAR_MIN, sresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError == NULL || lastError[0] == '\0', "Validate no error message was set");
 
@@ -664,7 +651,7 @@ int sdltest_randomBoundaryNumberSint8(void *arg)
     SDLTest_AssertCheck(
         sresult == SCHAR_MAX,
         "Validate result value for parameters (SCHAR_MIN,SCHAR_MAX - 1,SDL_FALSE); expected: %d, got: %" SDL_PRIs64, SCHAR_MAX, sresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError == NULL || lastError[0] == '\0', "Validate no error message was set");
 
@@ -674,7 +661,7 @@ int sdltest_randomBoundaryNumberSint8(void *arg)
     SDLTest_AssertCheck(
         sresult == SCHAR_MIN,
         "Validate result value for parameters(SCHAR_MIN,SCHAR_MAX,SDL_FALSE); expected: %d, got: %" SDL_PRIs64, SCHAR_MIN, sresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError != NULL && SDL_strcmp(lastError, expectedError) == 0,
                         "SDL_GetError(): expected message '%s', was message: '%s'",
@@ -688,13 +675,13 @@ int sdltest_randomBoundaryNumberSint8(void *arg)
     return TEST_COMPLETED;
 }
 
-/*
- * @brief Calls to random boundary number generators for Sint16
+/**
+ * Calls to random boundary number generators for Sint16
  */
-int sdltest_randomBoundaryNumberSint16(void *arg)
+static int sdltest_randomBoundaryNumberSint16(void *arg)
 {
     const char *expectedError = "That operation is not supported";
-    char *lastError;
+    const char *lastError;
     Sint64 sresult;
 
     /* Clean error messages */
@@ -763,7 +750,7 @@ int sdltest_randomBoundaryNumberSint16(void *arg)
     SDLTest_AssertCheck(
         sresult == SHRT_MIN,
         "Validate result value for parameters (SHRT_MIN+1,SHRT_MAX,SDL_FALSE); expected: %d, got: %" SDL_PRIs64, SHRT_MIN, sresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError == NULL || lastError[0] == '\0', "Validate no error message was set");
 
@@ -773,7 +760,7 @@ int sdltest_randomBoundaryNumberSint16(void *arg)
     SDLTest_AssertCheck(
         sresult == SHRT_MAX,
         "Validate result value for parameters (SHRT_MIN,SHRT_MAX - 1,SDL_FALSE); expected: %d, got: %" SDL_PRIs64, SHRT_MAX, sresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError == NULL || lastError[0] == '\0', "Validate no error message was set");
 
@@ -783,7 +770,7 @@ int sdltest_randomBoundaryNumberSint16(void *arg)
     SDLTest_AssertCheck(
         sresult == SHRT_MIN,
         "Validate result value for parameters(SHRT_MIN,SHRT_MAX,SDL_FALSE); expected: %d, got: %" SDL_PRIs64, SHRT_MIN, sresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError != NULL && SDL_strcmp(lastError, expectedError) == 0,
                         "SDL_GetError(): expected message '%s', was message: '%s'",
@@ -797,13 +784,13 @@ int sdltest_randomBoundaryNumberSint16(void *arg)
     return TEST_COMPLETED;
 }
 
-/*
- * @brief Calls to random boundary number generators for Sint32
+/**
+ * Calls to random boundary number generators for Sint32
  */
-int sdltest_randomBoundaryNumberSint32(void *arg)
+static int sdltest_randomBoundaryNumberSint32(void *arg)
 {
     const char *expectedError = "That operation is not supported";
-    char *lastError;
+    const char *lastError;
     Sint64 sresult;
 #if ((ULONG_MAX) == (UINT_MAX))
     Sint32 long_min = LONG_MIN;
@@ -879,7 +866,7 @@ int sdltest_randomBoundaryNumberSint32(void *arg)
     SDLTest_AssertCheck(
         sresult == long_min,
         "Validate result value for parameters (LONG_MIN+1,LONG_MAX,SDL_FALSE); expected: %" SDL_PRIs32 ", got: %" SDL_PRIs64, long_min, sresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError == NULL || lastError[0] == '\0', "Validate no error message was set");
 
@@ -889,7 +876,7 @@ int sdltest_randomBoundaryNumberSint32(void *arg)
     SDLTest_AssertCheck(
         sresult == long_max,
         "Validate result value for parameters (LONG_MIN,LONG_MAX - 1,SDL_FALSE); expected: %" SDL_PRIs32 ", got: %" SDL_PRIs64, long_max, sresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError == NULL || lastError[0] == '\0', "Validate no error message was set");
 
@@ -899,7 +886,7 @@ int sdltest_randomBoundaryNumberSint32(void *arg)
     SDLTest_AssertCheck(
         sresult == long_min,
         "Validate result value for parameters(LONG_MIN,LONG_MAX,SDL_FALSE); expected: %" SDL_PRIs32 ", got: %" SDL_PRIs64, long_min, sresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError != NULL && SDL_strcmp(lastError, expectedError) == 0,
                         "SDL_GetError(): expected message '%s', was message: '%s'",
@@ -913,13 +900,13 @@ int sdltest_randomBoundaryNumberSint32(void *arg)
     return TEST_COMPLETED;
 }
 
-/*
- * @brief Calls to random boundary number generators for Sint64
+/**
+ * Calls to random boundary number generators for Sint64
  */
-int sdltest_randomBoundaryNumberSint64(void *arg)
+static int sdltest_randomBoundaryNumberSint64(void *arg)
 {
     const char *expectedError = "That operation is not supported";
-    char *lastError;
+    const char *lastError;
     Sint64 sresult;
 
     /* Clean error messages */
@@ -988,7 +975,7 @@ int sdltest_randomBoundaryNumberSint64(void *arg)
     SDLTest_AssertCheck(
         sresult == INT64_MIN,
         "Validate result value for parameters (LLONG_MIN+1,LLONG_MAX,SDL_FALSE); expected: %" SDL_PRIs64 ", got: %" SDL_PRIs64, INT64_MIN, sresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError == NULL || lastError[0] == '\0', "Validate no error message was set");
 
@@ -998,7 +985,7 @@ int sdltest_randomBoundaryNumberSint64(void *arg)
     SDLTest_AssertCheck(
         sresult == INT64_MAX,
         "Validate result value for parameters (LLONG_MIN,LLONG_MAX - 1,SDL_FALSE); expected: %" SDL_PRIs64 ", got: %" SDL_PRIs64, INT64_MAX, sresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError == NULL || lastError[0] == '\0', "Validate no error message was set");
 
@@ -1008,7 +995,7 @@ int sdltest_randomBoundaryNumberSint64(void *arg)
     SDLTest_AssertCheck(
         sresult == INT64_MIN,
         "Validate result value for parameters(LLONG_MIN,LLONG_MAX,SDL_FALSE); expected: %" SDL_PRIs64 ", got: %" SDL_PRIs64, INT64_MIN, sresult);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError != NULL && SDL_strcmp(lastError, expectedError) == 0,
                         "SDL_GetError(): expected message '%s', was message: '%s'",
@@ -1023,9 +1010,9 @@ int sdltest_randomBoundaryNumberSint64(void *arg)
 }
 
 /**
- * @brief Calls to SDLTest_RandomIntegerInRange
+ * Calls to SDLTest_RandomIntegerInRange
  */
-int sdltest_randomIntegerInRange(void *arg)
+static int sdltest_randomIntegerInRange(void *arg)
 {
     Sint32 min, max;
     Sint32 result;
@@ -1097,9 +1084,9 @@ int sdltest_randomIntegerInRange(void *arg)
 }
 
 /**
- * @brief Calls to SDLTest_RandomAsciiString
+ * Calls to SDLTest_RandomAsciiString
  */
-int sdltest_randomAsciiString(void *arg)
+static int sdltest_randomAsciiString(void *arg)
 {
     char *result;
     size_t len;
@@ -1129,12 +1116,12 @@ int sdltest_randomAsciiString(void *arg)
 }
 
 /**
- * @brief Calls to SDLTest_RandomAsciiStringWithMaximumLength
+ * Calls to SDLTest_RandomAsciiStringWithMaximumLength
  */
-int sdltest_randomAsciiStringWithMaximumLength(void *arg)
+static int sdltest_randomAsciiStringWithMaximumLength(void *arg)
 {
     const char *expectedError = "Parameter 'maxLength' is invalid";
-    char *lastError;
+    const char *lastError;
     char *result;
     size_t targetLen;
     size_t len;
@@ -1166,7 +1153,7 @@ int sdltest_randomAsciiStringWithMaximumLength(void *arg)
     result = SDLTest_RandomAsciiStringWithMaximumLength((int)targetLen);
     SDLTest_AssertPass("Call to SDLTest_RandomAsciiStringWithMaximumLength(%d)", (int)targetLen);
     SDLTest_AssertCheck(result == NULL, "Validate that result is NULL");
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError != NULL && SDL_strcmp(lastError, expectedError) == 0,
                         "SDL_GetError(): expected message '%s', was message: '%s'",
@@ -1181,12 +1168,12 @@ int sdltest_randomAsciiStringWithMaximumLength(void *arg)
 }
 
 /**
- * @brief Calls to SDLTest_RandomAsciiStringOfSize
+ * Calls to SDLTest_RandomAsciiStringOfSize
  */
-int sdltest_randomAsciiStringOfSize(void *arg)
+static int sdltest_randomAsciiStringOfSize(void *arg)
 {
     const char *expectedError = "Parameter 'size' is invalid";
-    char *lastError;
+    const char *lastError;
     char *result;
     size_t targetLen;
     size_t len;
@@ -1219,7 +1206,7 @@ int sdltest_randomAsciiStringOfSize(void *arg)
     result = SDLTest_RandomAsciiStringOfSize((int)targetLen);
     SDLTest_AssertPass("Call to SDLTest_RandomAsciiStringOfSize(%d)", (int)targetLen);
     SDLTest_AssertCheck(result == NULL, "Validate that result is NULL");
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError != NULL && SDL_strcmp(lastError, expectedError) == 0,
                         "SDL_GetError(): expected message '%s', was message: '%s'",

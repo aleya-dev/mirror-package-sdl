@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -11,12 +11,15 @@
 */
 /* Simple program:  Create a native window and attach an SDL renderer */
 
-#include <stdio.h>
-#include <stdlib.h> /* for srand() */
-#include <time.h>   /* for time() */
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+#include <SDL3/SDL_test.h>
 
 #include "testnative.h"
 #include "testutils.h"
+
+#include <stdlib.h> /* for srand() */
+#include <time.h>   /* for time() */
 
 #define WINDOW_W    640
 #define WINDOW_H    480
@@ -27,41 +30,46 @@ static NativeWindowFactory *factories[] = {
 #ifdef TEST_NATIVE_WINDOWS
     &WindowsWindowFactory,
 #endif
+#ifdef TEST_NATIVE_WAYLAND
+    &WaylandWindowFactory,
+#endif
 #ifdef TEST_NATIVE_X11
     &X11WindowFactory,
 #endif
 #ifdef TEST_NATIVE_COCOA
     &CocoaWindowFactory,
 #endif
-#ifdef TEST_NATIVE_OS2
-    &OS2WindowFactory,
-#endif
     NULL
 };
 static NativeWindowFactory *factory = NULL;
 static void *native_window;
-static SDL_Rect *positions, *velocities;
+static SDL_FRect *positions, *velocities;
+static SDLTest_CommonState *state;
 
 /* Call this instead of exit(), so we can clean up SDL: atexit() is evil. */
 static void
 quit(int rc)
 {
-    SDL_VideoQuit();
-    if (native_window != NULL && factory != NULL) {
+    if (native_window && factory) {
         factory->DestroyNativeWindow(native_window);
     }
-    exit(rc);
+    SDL_Quit();
+    SDLTest_CommonDestroyState(state);
+    /* Let 'main()' return normally */
+    if (rc != 0) {
+        exit(rc);
+    }
 }
 
-void MoveSprites(SDL_Renderer *renderer, SDL_Texture *sprite)
+static void MoveSprites(SDL_Renderer *renderer, SDL_Texture *sprite)
 {
     int sprite_w, sprite_h;
     int i;
     SDL_Rect viewport;
-    SDL_Rect *position, *velocity;
+    SDL_FRect *position, *velocity;
 
     /* Query the sizes */
-    SDL_RenderGetViewport(renderer, &viewport);
+    SDL_GetRenderViewport(renderer, &viewport);
     SDL_QueryTexture(sprite, NULL, NULL, &sprite_w, &sprite_h);
 
     /* Draw a gray background */
@@ -84,7 +92,7 @@ void MoveSprites(SDL_Renderer *renderer, SDL_Texture *sprite)
         }
 
         /* Blit the sprite onto the screen */
-        SDL_RenderCopy(renderer, sprite, NULL, position);
+        SDL_RenderTexture(renderer, sprite, NULL, position);
     }
 
     /* Update the screen! */
@@ -95,6 +103,7 @@ int main(int argc, char *argv[])
 {
     int i, done;
     const char *driver;
+    SDL_PropertiesID props;
     SDL_Window *window;
     SDL_Renderer *renderer;
     SDL_Texture *sprite;
@@ -102,10 +111,21 @@ int main(int argc, char *argv[])
     int sprite_w, sprite_h;
     SDL_Event event;
 
+    /* Initialize test framework */
+    state = SDLTest_CommonCreateState(argv, 0);
+    if (!state) {
+        return 1;
+    }
+
     /* Enable standard application logging */
     SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
 
-    if (SDL_VideoInit(NULL) < 0) {
+    /* Parse commandline */
+    if (!SDLTest_CommonDefaultArgs(state, argc, argv)) {
+        return 1;
+    }
+
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't initialize SDL video: %s\n",
                      SDL_GetError());
         exit(1);
@@ -119,27 +139,33 @@ int main(int argc, char *argv[])
             break;
         }
     }
-    if (factory == NULL) {
+    if (!factory) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't find native window code for %s driver\n",
                      driver);
         quit(2);
     }
     SDL_Log("Creating native window for %s driver\n", driver);
     native_window = factory->CreateNativeWindow(WINDOW_W, WINDOW_H);
-    if (native_window == NULL) {
+    if (!native_window) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create native window\n");
         quit(3);
     }
-    window = SDL_CreateWindowFrom(native_window);
-    if (window == NULL) {
+    props = SDL_CreateProperties();
+    SDL_SetProperty(props, "sdl2-compat.external_window", native_window);
+    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN, SDL_TRUE);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, WINDOW_W);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, WINDOW_H);
+    window = SDL_CreateWindowWithProperties(props);
+    SDL_DestroyProperties(props);
+    if (!window) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create SDL window: %s\n", SDL_GetError());
         quit(4);
     }
     SDL_SetWindowTitle(window, "SDL Native Window Test");
 
     /* Create the renderer */
-    renderer = SDL_CreateRenderer(window, -1, 0);
-    if (renderer == NULL) {
+    renderer = SDL_CreateRenderer(window, NULL, 0);
+    if (!renderer) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create renderer: %s\n", SDL_GetError());
         quit(5);
     }
@@ -149,30 +175,30 @@ int main(int argc, char *argv[])
     SDL_RenderClear(renderer);
 
     sprite = LoadTexture(renderer, "icon.bmp", SDL_TRUE, NULL, NULL);
-    if (sprite == NULL) {
+    if (!sprite) {
         quit(6);
     }
 
     /* Allocate memory for the sprite info */
     SDL_GetWindowSize(window, &window_w, &window_h);
     SDL_QueryTexture(sprite, NULL, NULL, &sprite_w, &sprite_h);
-    positions = (SDL_Rect *)SDL_malloc(NUM_SPRITES * sizeof(SDL_Rect));
-    velocities = (SDL_Rect *)SDL_malloc(NUM_SPRITES * sizeof(SDL_Rect));
-    if (positions == NULL || velocities == NULL) {
+    positions = (SDL_FRect *)SDL_malloc(NUM_SPRITES * sizeof(*positions));
+    velocities = (SDL_FRect *)SDL_malloc(NUM_SPRITES * sizeof(*velocities));
+    if (!positions || !velocities) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Out of memory!\n");
         quit(2);
     }
     srand((unsigned int)time(NULL));
     for (i = 0; i < NUM_SPRITES; ++i) {
-        positions[i].x = rand() % (window_w - sprite_w);
-        positions[i].y = rand() % (window_h - sprite_h);
-        positions[i].w = sprite_w;
-        positions[i].h = sprite_h;
-        velocities[i].x = 0;
-        velocities[i].y = 0;
+        positions[i].x = (float)(rand() % (window_w - sprite_w));
+        positions[i].y = (float)(rand() % (window_h - sprite_h));
+        positions[i].w = (float)sprite_w;
+        positions[i].h = (float)sprite_h;
+        velocities[i].x = 0.0f;
+        velocities[i].y = 0.0f;
         while (!velocities[i].x && !velocities[i].y) {
-            velocities[i].x = (rand() % (MAX_SPEED * 2 + 1)) - MAX_SPEED;
-            velocities[i].y = (rand() % (MAX_SPEED * 2 + 1)) - MAX_SPEED;
+            velocities[i].x = (float)((rand() % (MAX_SPEED * 2 + 1)) - MAX_SPEED);
+            velocities[i].y = (float)((rand() % (MAX_SPEED * 2 + 1)) - MAX_SPEED);
         }
     }
 
@@ -182,15 +208,11 @@ int main(int argc, char *argv[])
         /* Check for events */
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
-            case SDL_WINDOWEVENT:
-                switch (event.window.event) {
-                case SDL_WINDOWEVENT_EXPOSED:
-                    SDL_SetRenderDrawColor(renderer, 0xA0, 0xA0, 0xA0, 0xFF);
-                    SDL_RenderClear(renderer);
-                    break;
-                }
+            case SDL_EVENT_WINDOW_EXPOSED:
+                SDL_SetRenderDrawColor(renderer, 0xA0, 0xA0, 0xA0, 0xFF);
+                SDL_RenderClear(renderer);
                 break;
-            case SDL_QUIT:
+            case SDL_EVENT_QUIT:
                 done = 1;
                 break;
             default:
@@ -200,9 +222,13 @@ int main(int argc, char *argv[])
         MoveSprites(renderer, sprite);
     }
 
+    SDL_DestroyTexture(sprite);
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_free(positions);
+    SDL_free(velocities);
+
     quit(0);
 
     return 0; /* to prevent compiler warning */
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

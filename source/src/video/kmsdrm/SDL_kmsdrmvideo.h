@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,10 +19,10 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#ifndef __SDL_KMSDRMVIDEO_H__
-#define __SDL_KMSDRMVIDEO_H__
+#ifndef SDL_kmsdrmvideo_h
+#define SDL_kmsdrmvideo_h
 
 #include "../SDL_sysvideo.h"
 
@@ -33,7 +33,38 @@
 #include <gbm.h>
 #include <EGL/egl.h>
 
-typedef struct SDL_VideoData
+#ifndef DRM_MODE_PAGE_FLIP_ASYNC
+#define DRM_MODE_PAGE_FLIP_ASYNC    2
+#endif
+
+#ifndef DRM_MODE_OBJECT_CONNECTOR
+#define DRM_MODE_OBJECT_CONNECTOR   0xc0c0c0c0
+#endif
+
+#ifndef DRM_MODE_OBJECT_CRTC
+#define DRM_MODE_OBJECT_CRTC        0xcccccccc
+#endif
+
+#ifndef DRM_CAP_ASYNC_PAGE_FLIP
+#define DRM_CAP_ASYNC_PAGE_FLIP 7
+#endif
+
+#ifndef DRM_CAP_CURSOR_WIDTH
+#define DRM_CAP_CURSOR_WIDTH    8
+#endif
+
+#ifndef DRM_CAP_CURSOR_HEIGHT
+#define DRM_CAP_CURSOR_HEIGHT   9
+#endif
+
+#ifndef GBM_FORMAT_ARGB8888
+#define GBM_FORMAT_ARGB8888  ((uint32_t)('A') | ((uint32_t)('R') << 8) | ((uint32_t)('2') << 16) | ((uint32_t)('4') << 24))
+#define GBM_BO_USE_CURSOR   (1 << 1)
+#define GBM_BO_USE_WRITE    (1 << 3)
+#define GBM_BO_USE_LINEAR   (1 << 4)
+#endif
+
+struct SDL_VideoData
 {
     int devindex;     /* device index that was passed on creation */
     int drm_fd;       /* DRM file desc */
@@ -53,14 +84,14 @@ typedef struct SDL_VideoData
        open 1 FD and create 1 gbm device. */
     SDL_bool gbm_init;
 
-} SDL_VideoData;
+};
 
-typedef struct SDL_DisplayModeData
+struct SDL_DisplayModeData
 {
     int mode_index;
-} SDL_DisplayModeData;
+};
 
-typedef struct SDL_DisplayData
+struct SDL_DisplayData
 {
     drmModeConnector *connector;
     drmModeCrtc *crtc;
@@ -80,9 +111,9 @@ typedef struct SDL_DisplayData
     uint64_t cursor_w, cursor_h;
 
     SDL_bool default_cursor_init;
-} SDL_DisplayData;
+};
 
-typedef struct SDL_WindowData
+struct SDL_WindowData
 {
     SDL_VideoData *viddata;
     /* SDL internals expect EGL surface to be here, and in KMSDRM the GBM surface is
@@ -98,7 +129,7 @@ typedef struct SDL_WindowData
 
     EGLSurface egl_surface;
     SDL_bool egl_surface_dirty;
-} SDL_WindowData;
+};
 
 typedef struct KMSDRM_FBInfo
 {
@@ -107,52 +138,42 @@ typedef struct KMSDRM_FBInfo
 } KMSDRM_FBInfo;
 
 /* Helper functions */
-int KMSDRM_CreateSurfaces(_THIS, SDL_Window *window);
-KMSDRM_FBInfo *KMSDRM_FBFromBO(_THIS, struct gbm_bo *bo);
-KMSDRM_FBInfo *KMSDRM_FBFromBO2(_THIS, struct gbm_bo *bo, int w, int h);
-SDL_bool KMSDRM_WaitPageflip(_THIS, SDL_WindowData *windata);
+int KMSDRM_CreateSurfaces(SDL_VideoDevice *_this, SDL_Window *window);
+KMSDRM_FBInfo *KMSDRM_FBFromBO(SDL_VideoDevice *_this, struct gbm_bo *bo);
+KMSDRM_FBInfo *KMSDRM_FBFromBO2(SDL_VideoDevice *_this, struct gbm_bo *bo, int w, int h);
+SDL_bool KMSDRM_WaitPageflip(SDL_VideoDevice *_this, SDL_WindowData *windata);
 
 /****************************************************************************/
 /* SDL_VideoDevice functions declaration                                    */
 /****************************************************************************/
 
 /* Display and window functions */
-int KMSDRM_VideoInit(_THIS);
-void KMSDRM_VideoQuit(_THIS);
-void KMSDRM_GetDisplayModes(_THIS, SDL_VideoDisplay * display);
-int KMSDRM_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode);
-int KMSDRM_CreateWindow(_THIS, SDL_Window * window);
-int KMSDRM_CreateWindowFrom(_THIS, SDL_Window * window, const void *data);
-void KMSDRM_SetWindowTitle(_THIS, SDL_Window * window);
-void KMSDRM_SetWindowIcon(_THIS, SDL_Window * window, SDL_Surface * icon);
-void KMSDRM_SetWindowPosition(_THIS, SDL_Window * window);
-void KMSDRM_SetWindowSize(_THIS, SDL_Window * window);
-void KMSDRM_SetWindowFullscreen(_THIS, SDL_Window * window, SDL_VideoDisplay * _display, SDL_bool fullscreen);
-int KMSDRM_SetWindowGammaRamp(_THIS, SDL_Window * window, const Uint16 * ramp);
-int KMSDRM_GetWindowGammaRamp(_THIS, SDL_Window * window, Uint16 * ramp);
-void KMSDRM_ShowWindow(_THIS, SDL_Window * window);
-void KMSDRM_HideWindow(_THIS, SDL_Window * window);
-void KMSDRM_RaiseWindow(_THIS, SDL_Window * window);
-void KMSDRM_MaximizeWindow(_THIS, SDL_Window * window);
-void KMSDRM_MinimizeWindow(_THIS, SDL_Window * window);
-void KMSDRM_RestoreWindow(_THIS, SDL_Window * window);
-void KMSDRM_DestroyWindow(_THIS, SDL_Window * window);
-
-/* Window manager function */
-SDL_bool KMSDRM_GetWindowWMInfo(_THIS, SDL_Window * window,
-                             struct SDL_SysWMinfo *info);
+int KMSDRM_VideoInit(SDL_VideoDevice *_this);
+void KMSDRM_VideoQuit(SDL_VideoDevice *_this);
+int KMSDRM_GetDisplayModes(SDL_VideoDevice *_this, SDL_VideoDisplay *display);
+int KMSDRM_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay *display, SDL_DisplayMode *mode);
+int KMSDRM_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID create_props);
+void KMSDRM_SetWindowTitle(SDL_VideoDevice *_this, SDL_Window *window);
+int KMSDRM_SetWindowPosition(SDL_VideoDevice *_this, SDL_Window *window);
+void KMSDRM_SetWindowSize(SDL_VideoDevice *_this, SDL_Window *window);
+int KMSDRM_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window *window, SDL_VideoDisplay *_display, SDL_bool fullscreen);
+void KMSDRM_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window);
+void KMSDRM_HideWindow(SDL_VideoDevice *_this, SDL_Window *window);
+void KMSDRM_RaiseWindow(SDL_VideoDevice *_this, SDL_Window *window);
+void KMSDRM_MaximizeWindow(SDL_VideoDevice *_this, SDL_Window *window);
+void KMSDRM_MinimizeWindow(SDL_VideoDevice *_this, SDL_Window *window);
+void KMSDRM_RestoreWindow(SDL_VideoDevice *_this, SDL_Window *window);
+void KMSDRM_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window);
 
 /* OpenGL/OpenGL ES functions */
-int KMSDRM_GLES_LoadLibrary(_THIS, const char *path);
-void *KMSDRM_GLES_GetProcAddress(_THIS, const char *proc);
-void KMSDRM_GLES_UnloadLibrary(_THIS);
-SDL_GLContext KMSDRM_GLES_CreateContext(_THIS, SDL_Window *window);
-int KMSDRM_GLES_MakeCurrent(_THIS, SDL_Window *window, SDL_GLContext context);
-int KMSDRM_GLES_SetSwapInterval(_THIS, int interval);
-int KMSDRM_GLES_GetSwapInterval(_THIS);
-int KMSDRM_GLES_SwapWindow(_THIS, SDL_Window *window);
-void KMSDRM_GLES_DeleteContext(_THIS, SDL_GLContext context);
+int KMSDRM_GLES_LoadLibrary(SDL_VideoDevice *_this, const char *path);
+SDL_FunctionPointer KMSDRM_GLES_GetProcAddress(SDL_VideoDevice *_this, const char *proc);
+void KMSDRM_GLES_UnloadLibrary(SDL_VideoDevice *_this);
+SDL_GLContext KMSDRM_GLES_CreateContext(SDL_VideoDevice *_this, SDL_Window *window);
+int KMSDRM_GLES_MakeCurrent(SDL_VideoDevice *_this, SDL_Window *window, SDL_GLContext context);
+int KMSDRM_GLES_SetSwapInterval(SDL_VideoDevice *_this, int interval);
+int KMSDRM_GLES_GetSwapInterval(SDL_VideoDevice *_this);
+int KMSDRM_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window *window);
+int KMSDRM_GLES_DeleteContext(SDL_VideoDevice *_this, SDL_GLContext context);
 
-#endif /* __SDL_KMSDRMVIDEO_H__ */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif /* SDL_kmsdrmvideo_h */

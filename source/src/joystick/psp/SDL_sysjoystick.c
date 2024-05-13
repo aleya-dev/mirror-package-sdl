@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,9 +18,9 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#if SDL_JOYSTICK_PSP
+#ifdef SDL_JOYSTICK_PSP
 
 /* This is the PSP implementation of the SDL joystick API */
 #include <pspctrl.h>
@@ -30,9 +30,6 @@
 
 #include "../SDL_sysjoystick.h"
 #include "../SDL_joystick_c.h"
-
-#include "SDL_events.h"
-#include "SDL_error.h"
 
 /* Current pad state */
 static SceCtrlData pad = { .Lx = 0, .Ly = 0, .Buttons = 0 };
@@ -96,6 +93,8 @@ static int PSP_JoystickInit(void)
         analog_map[127 - i] = -1 * analog_map[i + 128];
     }
 
+    SDL_PrivateJoystickAdded(1);
+
     return 1;
 }
 
@@ -106,6 +105,12 @@ static int PSP_JoystickGetCount(void)
 
 static void PSP_JoystickDetect(void)
 {
+}
+
+static SDL_bool PSP_JoystickIsDevicePresent(Uint16 vendor_id, Uint16 product_id, Uint16 version, const char *name)
+{
+    /* We don't override any other drivers */
+    return SDL_FALSE;
 }
 
 /* Function to get the device-dependent name of a joystick */
@@ -122,6 +127,11 @@ static const char *PSP_JoystickGetDeviceName(int device_index)
 static const char *PSP_JoystickGetDevicePath(int index)
 {
     return NULL;
+}
+
+static int PSP_JoystickGetDeviceSteamVirtualGamepadSlot(int device_index)
+{
+    return -1;
 }
 
 static int PSP_JoystickGetDevicePlayerIndex(int device_index)
@@ -143,7 +153,7 @@ static SDL_JoystickGUID PSP_JoystickGetDeviceGUID(int device_index)
 /* Function to perform the mapping from device index to the instance id for this index */
 static SDL_JoystickID PSP_JoystickGetDeviceInstanceID(int device_index)
 {
-    return device_index;
+    return device_index + 1;
 }
 
 /* Function to open a joystick for use.
@@ -156,7 +166,6 @@ static int PSP_JoystickOpen(SDL_Joystick *joystick, int device_index)
     joystick->nbuttons = SDL_arraysize(button_map);
     joystick->naxes = 2;
     joystick->nhats = 0;
-    joystick->instance_id = device_index;
 
     return 0;
 }
@@ -169,11 +178,6 @@ static int PSP_JoystickRumble(SDL_Joystick *joystick, Uint16 low_frequency_rumbl
 static int PSP_JoystickRumbleTriggers(SDL_Joystick *joystick, Uint16 left_rumble, Uint16 right_rumble)
 {
     return SDL_Unsupported();
-}
-
-static Uint32 PSP_JoystickGetCapabilities(SDL_Joystick *joystick)
-{
-    return 0;
 }
 
 static int PSP_JoystickSetLED(SDL_Joystick *joystick, Uint8 red, Uint8 green, Uint8 blue)
@@ -204,19 +208,22 @@ static void PSP_JoystickUpdate(SDL_Joystick *joystick)
     unsigned char x, y;
     static enum PspCtrlButtons old_buttons = 0;
     static unsigned char old_x = 0, old_y = 0;
+    Uint64 timestamp = SDL_GetTicksNS();
 
-    sceCtrlReadBufferPositive(&pad, 1);
+    if (sceCtrlPeekBufferPositive(&pad, 1) <= 0) {
+        return;
+    }
     buttons = pad.Buttons;
     x = pad.Lx;
     y = pad.Ly;
 
     /* Axes */
     if (old_x != x) {
-        SDL_PrivateJoystickAxis(joystick, 0, analog_map[x]);
+        SDL_SendJoystickAxis(timestamp, joystick, 0, analog_map[x]);
         old_x = x;
     }
     if (old_y != y) {
-        SDL_PrivateJoystickAxis(joystick, 1, analog_map[y]);
+        SDL_SendJoystickAxis(timestamp, joystick, 1, analog_map[y]);
         old_y = y;
     }
 
@@ -226,7 +233,7 @@ static void PSP_JoystickUpdate(SDL_Joystick *joystick)
     if (changed) {
         for (i = 0; i < SDL_arraysize(button_map); i++) {
             if (changed & button_map[i]) {
-                SDL_PrivateJoystickButton(
+                SDL_SendJoystickButton(timestamp,
                     joystick, i,
                     (buttons & button_map[i]) ? SDL_PRESSED : SDL_RELEASED);
             }
@@ -253,8 +260,10 @@ SDL_JoystickDriver SDL_PSP_JoystickDriver = {
     PSP_JoystickInit,
     PSP_JoystickGetCount,
     PSP_JoystickDetect,
+    PSP_JoystickIsDevicePresent,
     PSP_JoystickGetDeviceName,
     PSP_JoystickGetDevicePath,
+    PSP_JoystickGetDeviceSteamVirtualGamepadSlot,
     PSP_JoystickGetDevicePlayerIndex,
     PSP_JoystickSetDevicePlayerIndex,
     PSP_JoystickGetDeviceGUID,
@@ -262,7 +271,6 @@ SDL_JoystickDriver SDL_PSP_JoystickDriver = {
     PSP_JoystickOpen,
     PSP_JoystickRumble,
     PSP_JoystickRumbleTriggers,
-    PSP_JoystickGetCapabilities,
     PSP_JoystickSetLED,
     PSP_JoystickSendEffect,
     PSP_JoystickSetSensorsEnabled,
@@ -273,6 +281,3 @@ SDL_JoystickDriver SDL_PSP_JoystickDriver = {
 };
 
 #endif /* SDL_JOYSTICK_PSP */
-
-/* vim: ts=4 sw=4
- */

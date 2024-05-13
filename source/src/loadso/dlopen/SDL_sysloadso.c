@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,7 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifdef SDL_LOADSO_DLOPEN
 
@@ -28,9 +28,7 @@
 #include <stdio.h>
 #include <dlfcn.h>
 
-#include "SDL_loadso.h"
-
-#if SDL_VIDEO_DRIVER_UIKIT
+#ifdef SDL_VIDEO_DRIVER_UIKIT
 #include "../../video/uikit/SDL_uikitvideo.h"
 #endif
 
@@ -39,7 +37,7 @@ void *SDL_LoadObject(const char *sofile)
     void *handle;
     const char *loaderror;
 
-#if SDL_VIDEO_DRIVER_UIKIT
+#ifdef SDL_VIDEO_DRIVER_UIKIT
     if (!UIKit_IsSystemVersionAtLeast(8.0)) {
         SDL_SetError("SDL_LoadObject requires iOS 8+");
         return NULL;
@@ -48,16 +46,16 @@ void *SDL_LoadObject(const char *sofile)
 
     handle = dlopen(sofile, RTLD_NOW | RTLD_LOCAL);
     loaderror = dlerror();
-    if (handle == NULL) {
+    if (!handle) {
         SDL_SetError("Failed loading %s: %s", sofile, loaderror);
     }
     return handle;
 }
 
-void *SDL_LoadFunction(void *handle, const char *name)
+SDL_FunctionPointer SDL_LoadFunction(void *handle, const char *name)
 {
     void *symbol = dlsym(handle, name);
-    if (symbol == NULL) {
+    if (!symbol) {
         /* prepend an underscore for platforms that need that. */
         SDL_bool isstack;
         size_t len = SDL_strlen(name) + 1;
@@ -66,7 +64,7 @@ void *SDL_LoadFunction(void *handle, const char *name)
         SDL_memcpy(&_name[1], name, len);
         symbol = dlsym(handle, _name);
         SDL_small_free(_name, isstack);
-        if (symbol == NULL) {
+        if (!symbol) {
             SDL_SetError("Failed loading %s: %s", name,
                          (const char *)dlerror());
         }
@@ -76,11 +74,9 @@ void *SDL_LoadFunction(void *handle, const char *name)
 
 void SDL_UnloadObject(void *handle)
 {
-    if (handle != NULL) {
+    if (handle) {
         dlclose(handle);
     }
 }
 
 #endif /* SDL_LOADSO_DLOPEN */
-
-/* vi: set ts=4 sw=4 expandtab: */

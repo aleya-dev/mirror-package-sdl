@@ -1,30 +1,29 @@
- /*
-  Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+/*
+ Simple DirectMedia Layer
+ Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
-  This software is provided 'as-is', without any express or implied
-  warranty.  In no event will the authors be held liable for any damages
-  arising from the use of this software.
+ This software is provided 'as-is', without any express or implied
+ warranty.  In no event will the authors be held liable for any damages
+ arising from the use of this software.
 
-  Permission is granted to anyone to use this software for any purpose,
-  including commercial applications, and to alter it and redistribute it
-  freely, subject to the following restrictions:
+ Permission is granted to anyone to use this software for any purpose,
+ including commercial applications, and to alter it and redistribute it
+ freely, subject to the following restrictions:
 
-  1. The origin of this software must not be misrepresented; you must not
-     claim that you wrote the original software. If you use this software
-     in a product, an acknowledgment in the product documentation would be
-     appreciated but is not required.
-  2. Altered source versions must be plainly marked as such, and must not be
-     misrepresented as being the original software.
-  3. This notice may not be removed or altered from any source distribution.
+ 1. The origin of this software must not be misrepresented; you must not
+    claim that you wrote the original software. If you use this software
+    in a product, an acknowledgment in the product documentation would be
+    appreciated but is not required.
+ 2. Altered source versions must be plainly marked as such, and must not be
+    misrepresented as being the original software.
+ 3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_UIKIT
+#ifdef SDL_VIDEO_DRIVER_UIKIT
 
 #include "SDL_uikitview.h"
 
-#include "SDL_hints.h"
 #include "../../events/SDL_mouse_c.h"
 #include "../../events/SDL_touch_c.h"
 #include "../../events/SDL_events_c.h"
@@ -35,14 +34,15 @@
 #include "SDL_uikitwindow.h"
 
 /* The maximum number of mouse buttons we support */
-#define MAX_MOUSE_BUTTONS    5
+#define MAX_MOUSE_BUTTONS 5
 
 /* This is defined in SDL_sysjoystick.m */
-#if !SDL_JOYSTICK_DISABLED
+#ifndef SDL_JOYSTICK_DISABLED
 extern int SDL_AppleTVRemoteOpenedAsJoystick;
 #endif
 
-@implementation SDL_uikitview {
+@implementation SDL_uikitview
+{
     SDL_Window *sdlwindow;
 
     SDL_TouchID directTouchId;
@@ -52,7 +52,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
 - (instancetype)initWithFrame:(CGRect)frame
 {
     if ((self = [super initWithFrame:frame])) {
-#if TARGET_OS_TV
+#ifdef SDL_PLATFORM_TVOS
         /* Apple TV Remote touchpad swipe gestures. */
         UISwipeGestureRecognizer *swipeUp = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(swipeGesture:)];
         swipeUp.direction = UISwipeGestureRecognizerDirectionUp;
@@ -77,12 +77,12 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
         directTouchId = 1;
         indirectTouchId = 2;
 
-#if !TARGET_OS_TV
+#ifndef SDL_PLATFORM_TVOS
         self.multipleTouchEnabled = YES;
         SDL_AddTouch(directTouchId, SDL_TOUCH_DEVICE_DIRECT, "");
 #endif
 
-#if !TARGET_OS_TV && defined(__IPHONE_13_4)
+#if !defined(SDL_PLATFORM_TVOS) && defined(__IPHONE_13_4)
         if (@available(iOS 13.4, *)) {
             [self addInteraction:[[UIPointerInteraction alloc] initWithDelegate:self]];
         }
@@ -94,7 +94,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
 
 - (void)setSDLWindow:(SDL_Window *)window
 {
-    SDL_WindowData *data = nil;
+    SDL_UIKitWindowData *data = nil;
 
     if (window == sdlwindow) {
         return;
@@ -103,7 +103,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
     /* Remove ourself from the old window. */
     if (sdlwindow) {
         SDL_uikitview *view = nil;
-        data = (__bridge SDL_WindowData *) sdlwindow->driverdata;
+        data = (__bridge SDL_UIKitWindowData *)sdlwindow->driverdata;
 
         [data.views removeObject:self];
 
@@ -122,7 +122,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
 
     /* Add ourself to the new window. */
     if (window) {
-        data = (__bridge SDL_WindowData *) window->driverdata;
+        data = (__bridge SDL_UIKitWindowData *)window->driverdata;
 
         /* Make sure the SDL window has a strong reference to this view. */
         [data.views addObject:self];
@@ -148,8 +148,9 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
     sdlwindow = window;
 }
 
-#if !TARGET_OS_TV && defined(__IPHONE_13_4)
-- (UIPointerRegion *)pointerInteraction:(UIPointerInteraction *)interaction regionForRequest:(UIPointerRegionRequest *)request defaultRegion:(UIPointerRegion *)defaultRegion API_AVAILABLE(ios(13.4)){
+#if !defined(SDL_PLATFORM_TVOS) && defined(__IPHONE_13_4)
+- (UIPointerRegion *)pointerInteraction:(UIPointerInteraction *)interaction regionForRequest:(UIPointerRegionRequest *)request defaultRegion:(UIPointerRegion *)defaultRegion API_AVAILABLE(ios(13.4))
+{
     if (request != nil && !SDL_GCMouseRelativeMode()) {
         CGPoint origin = self.bounds.origin;
         CGPoint point = request.location;
@@ -157,19 +158,20 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
         point.x -= origin.x;
         point.y -= origin.y;
 
-        SDL_SendMouseMotion(sdlwindow, 0, 0, (int)point.x, (int)point.y);
+        SDL_SendMouseMotion(0, sdlwindow, SDL_GLOBAL_MOUSE_ID, SDL_FALSE, point.x, point.y);
     }
     return [UIPointerRegion regionWithRect:self.bounds identifier:nil];
 }
 
-- (UIPointerStyle *)pointerInteraction:(UIPointerInteraction *)interaction styleForRegion:(UIPointerRegion *)region  API_AVAILABLE(ios(13.4)){
-    if (SDL_ShowCursor(-1)) {
+- (UIPointerStyle *)pointerInteraction:(UIPointerInteraction *)interaction styleForRegion:(UIPointerRegion *)region API_AVAILABLE(ios(13.4))
+{
+    if (SDL_CursorVisible()) {
         return nil;
     } else {
         return [UIPointerStyle hiddenPointerStyle];
     }
 }
-#endif /* !TARGET_OS_TV && __IPHONE_13_4 */
+#endif /* !defined(SDL_PLATFORM_TVOS) && __IPHONE_13_4 */
 
 - (SDL_TouchDeviceType)touchTypeForTouch:(UITouch *)touch
 {
@@ -187,11 +189,11 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
 - (SDL_TouchID)touchIdForType:(SDL_TouchDeviceType)type
 {
     switch (type) {
-        case SDL_TOUCH_DEVICE_DIRECT:
-        default:
-            return directTouchId;
-        case SDL_TOUCH_DEVICE_INDIRECT_RELATIVE:
-            return indirectTouchId;
+    case SDL_TOUCH_DEVICE_DIRECT:
+    default:
+        return directTouchId;
+    case SDL_TOUCH_DEVICE_INDIRECT_RELATIVE:
+        return indirectTouchId;
     }
 }
 
@@ -212,7 +214,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
 {
 #ifdef __IPHONE_9_0
     if ([touch respondsToSelector:@selector(force)]) {
-        return (float) touch.force;
+        return (float)touch.force;
     }
 #endif
 
@@ -224,10 +226,10 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
     for (UITouch *touch in touches) {
         BOOL handled = NO;
 
-#if !TARGET_OS_TV && defined(__IPHONE_13_4)
+#if !defined(SDL_PLATFORM_TVOS) && defined(__IPHONE_13_4)
         if (@available(iOS 13.4, *)) {
             if (touch.type == UITouchTypeIndirectPointer) {
-                if (!SDL_HasGCMouse()) {
+                if (!SDL_HasMouse()) {
                     int i;
 
                     for (i = 1; i <= MAX_MOUSE_BUTTONS; ++i) {
@@ -248,7 +250,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
                                 button = (Uint8)i;
                                 break;
                             }
-                            SDL_SendMouseButton(sdlwindow, 0, SDL_PRESSED, button);
+                            SDL_SendMouseButton(UIKit_GetEventTimestamp([event timestamp]), sdlwindow, SDL_GLOBAL_MOUSE_ID, SDL_PRESSED, button);
                         }
                     }
                 }
@@ -268,7 +270,8 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
             /* FIXME, need to send: int clicks = (int) touch.tapCount; ? */
 
             CGPoint locationInView = [self touchLocation:touch shouldNormalize:YES];
-            SDL_SendTouch(touchId, (SDL_FingerID)((size_t)touch), sdlwindow,
+            SDL_SendTouch(UIKit_GetEventTimestamp([event timestamp]),
+                          touchId, (SDL_FingerID)(uintptr_t)touch, sdlwindow,
                           SDL_TRUE, locationInView.x, locationInView.y, pressure);
         }
     }
@@ -279,10 +282,10 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
     for (UITouch *touch in touches) {
         BOOL handled = NO;
 
-#if !TARGET_OS_TV && defined(__IPHONE_13_4)
+#if !defined(SDL_PLATFORM_TVOS) && defined(__IPHONE_13_4)
         if (@available(iOS 13.4, *)) {
             if (touch.type == UITouchTypeIndirectPointer) {
-                if (!SDL_HasGCMouse()) {
+                if (!SDL_HasMouse()) {
                     int i;
 
                     for (i = 1; i <= MAX_MOUSE_BUTTONS; ++i) {
@@ -303,7 +306,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
                                 button = (Uint8)i;
                                 break;
                             }
-                            SDL_SendMouseButton(sdlwindow, 0, SDL_RELEASED, button);
+                            SDL_SendMouseButton(UIKit_GetEventTimestamp([event timestamp]), sdlwindow, SDL_GLOBAL_MOUSE_ID, SDL_RELEASED, button);
                         }
                     }
                 }
@@ -323,7 +326,8 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
             /* FIXME, need to send: int clicks = (int) touch.tapCount; ? */
 
             CGPoint locationInView = [self touchLocation:touch shouldNormalize:YES];
-            SDL_SendTouch(touchId, (SDL_FingerID)((size_t)touch), sdlwindow,
+            SDL_SendTouch(UIKit_GetEventTimestamp([event timestamp]),
+                          touchId, (SDL_FingerID)(uintptr_t)touch, sdlwindow,
                           SDL_FALSE, locationInView.x, locationInView.y, pressure);
         }
     }
@@ -339,7 +343,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
     for (UITouch *touch in touches) {
         BOOL handled = NO;
 
-#if !TARGET_OS_TV && defined(__IPHONE_13_4)
+#if !defined(SDL_PLATFORM_TVOS) && defined(__IPHONE_13_4)
         if (@available(iOS 13.4, *)) {
             if (touch.type == UITouchTypeIndirectPointer) {
                 /* Already handled in pointerInteraction callback */
@@ -357,14 +361,15 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
             }
 
             CGPoint locationInView = [self touchLocation:touch shouldNormalize:YES];
-            SDL_SendTouchMotion(touchId, (SDL_FingerID)((size_t)touch), sdlwindow,
+            SDL_SendTouchMotion(UIKit_GetEventTimestamp([event timestamp]),
+                                touchId, (SDL_FingerID)(uintptr_t)touch, sdlwindow,
                                 locationInView.x, locationInView.y, pressure);
         }
     }
 }
 
-#if TARGET_OS_TV || defined(__IPHONE_9_1)
-- (SDL_Scancode)scancodeFromPress:(UIPress*)press
+#if defined(SDL_PLATFORM_TVOS) || defined(__IPHONE_9_1)
+- (SDL_Scancode)scancodeFromPress:(UIPress *)press
 {
 #ifdef __IPHONE_13_4
     if ([press respondsToSelector:@selector((key))]) {
@@ -374,7 +379,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
     }
 #endif
 
-#if !SDL_JOYSTICK_DISABLED
+#ifndef SDL_JOYSTICK_DISABLED
     /* Presses from Apple TV remote */
     if (!SDL_AppleTVRemoteOpenedAsJoystick) {
         switch (press.type) {
@@ -406,39 +411,39 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
 
 - (void)pressesBegan:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event
 {
-    if (!SDL_HasGCKeyboard()) {
+    if (!SDL_HasKeyboard()) {
         for (UIPress *press in presses) {
             SDL_Scancode scancode = [self scancodeFromPress:press];
-            SDL_SendKeyboardKey(SDL_PRESSED, scancode);
+            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, SDL_PRESSED, scancode);
         }
     }
-    if (SDL_IsTextInputActive()) {
+    if (SDL_TextInputActive()) {
         [super pressesBegan:presses withEvent:event];
     }
 }
 
 - (void)pressesEnded:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event
 {
-    if (!SDL_HasGCKeyboard()) {
+    if (!SDL_HasKeyboard()) {
         for (UIPress *press in presses) {
             SDL_Scancode scancode = [self scancodeFromPress:press];
-            SDL_SendKeyboardKey(SDL_RELEASED, scancode);
+            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, SDL_RELEASED, scancode);
         }
     }
-    if (SDL_IsTextInputActive()) {
+    if (SDL_TextInputActive()) {
         [super pressesEnded:presses withEvent:event];
     }
 }
 
 - (void)pressesCancelled:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event
 {
-    if (!SDL_HasGCKeyboard()) {
+    if (!SDL_HasKeyboard()) {
         for (UIPress *press in presses) {
             SDL_Scancode scancode = [self scancodeFromPress:press];
-            SDL_SendKeyboardKey(SDL_RELEASED, scancode);
+            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, SDL_RELEASED, scancode);
         }
     }
-    if (SDL_IsTextInputActive()) {
+    if (SDL_TextInputActive()) {
         [super pressesCancelled:presses withEvent:event];
     }
 }
@@ -446,44 +451,42 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
 - (void)pressesChanged:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event
 {
     /* This is only called when the force of a press changes. */
-    if (SDL_IsTextInputActive()) {
+    if (SDL_TextInputActive()) {
         [super pressesChanged:presses withEvent:event];
     }
 }
 
-#endif /* TARGET_OS_TV || defined(__IPHONE_9_1) */
+#endif /* defined(SDL_PLATFORM_TVOS) || defined(__IPHONE_9_1) */
 
-#if TARGET_OS_TV
--(void)swipeGesture:(UISwipeGestureRecognizer *)gesture
+#ifdef SDL_PLATFORM_TVOS
+- (void)swipeGesture:(UISwipeGestureRecognizer *)gesture
 {
     /* Swipe gestures don't trigger begin states. */
     if (gesture.state == UIGestureRecognizerStateEnded) {
-#if !SDL_JOYSTICK_DISABLED
+#ifndef SDL_JOYSTICK_DISABLED
         if (!SDL_AppleTVRemoteOpenedAsJoystick) {
             /* Send arrow key presses for now, as we don't have an external API
              * which better maps to swipe gestures. */
             switch (gesture.direction) {
             case UISwipeGestureRecognizerDirectionUp:
-                SDL_SendKeyboardKeyAutoRelease(SDL_SCANCODE_UP);
+                SDL_SendKeyboardKeyAutoRelease(0, SDL_SCANCODE_UP);
                 break;
             case UISwipeGestureRecognizerDirectionDown:
-                SDL_SendKeyboardKeyAutoRelease(SDL_SCANCODE_DOWN);
+                SDL_SendKeyboardKeyAutoRelease(0, SDL_SCANCODE_DOWN);
                 break;
             case UISwipeGestureRecognizerDirectionLeft:
-                SDL_SendKeyboardKeyAutoRelease(SDL_SCANCODE_LEFT);
+                SDL_SendKeyboardKeyAutoRelease(0, SDL_SCANCODE_LEFT);
                 break;
             case UISwipeGestureRecognizerDirectionRight:
-                SDL_SendKeyboardKeyAutoRelease(SDL_SCANCODE_RIGHT);
+                SDL_SendKeyboardKeyAutoRelease(0, SDL_SCANCODE_RIGHT);
                 break;
             }
         }
 #endif /* !SDL_JOYSTICK_DISABLED */
     }
 }
-#endif /* TARGET_OS_TV */
+#endif /* SDL_PLATFORM_TVOS */
 
 @end
 
 #endif /* SDL_VIDEO_DRIVER_UIKIT */
-
-/* vi: set ts=4 sw=4 expandtab: */
